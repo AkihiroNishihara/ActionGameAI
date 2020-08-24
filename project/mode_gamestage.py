@@ -4,7 +4,8 @@ import sys
 import itertools
 from project import header as h
 
-TIME_STAGE = 60
+TIME_STAGE = 30
+DIST_BASE_MOVE = 3
 
 
 def game_stage(screen):
@@ -47,13 +48,13 @@ def game_stage(screen):
         # 移動処理(長押し)
         key_pressed = pygame.key.get_pressed()
         if key_pressed[K_LEFT]:
-            rect_player.move_ip(-1, 0)
+            rect_player.move_ip(-DIST_BASE_MOVE, 0)
         if key_pressed[K_RIGHT]:
-            rect_player.move_ip(1, 0)
+            rect_player.move_ip(DIST_BASE_MOVE, 0)
         if key_pressed[K_DOWN]:
-            rect_player.move_ip(0, 1)
+            rect_player.move_ip(0, DIST_BASE_MOVE)
         if key_pressed[K_UP]:
-            rect_player.move_ip(0, -1)
+            rect_player.move_ip(0, -DIST_BASE_MOVE)
         screen.blit(img_player, rect_player)
 
         # イベント処理
@@ -67,6 +68,8 @@ def game_stage(screen):
                     sys.exit()
                 elif event.key == K_z:
                     is_loop = False
+        if TIME_STAGE - time_elapsed < 0:
+            is_loop = False
     return mode_next
 
 
