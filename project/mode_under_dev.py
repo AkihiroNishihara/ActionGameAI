@@ -16,12 +16,16 @@ def under_development(screen):
 
     while (is_loop):
         screen.fill((255, 255, 255))
+
         str_title = "Under Development"
-        str_operation = "press Z"
-        text_title = font.render(str_title, True, (255, 0, 0))
-        text_operation = font.render(str_operation, True, (255, 0, 0))
-        screen.blit(text_title, [320 - size_font * len(str_title) / 2, 100])
-        screen.blit(text_operation, [320 - size_font * len(str_title) / 2, 300])
+        text_title = font.render(str_title, True, (255, 0, 0))  # テキストの作成
+        text_title_rect = text_title.get_rect(center=(h.SCREEN_WIDTH / 2, h.SCREEN_HEIGHT / 2))  # テキストボックスのサイズ取得
+        screen.blit(text_title, [text_title_rect.left, text_title_rect.top - 100])  # テキストの描写
+
+        str_ope = "press Z"
+        text_ope = font.render(str_ope, True, (255, 0, 0))  # テキストの作成
+        text_ope_rect = text_ope.get_rect(center=(h.SCREEN_WIDTH / 2, h.SCREEN_HEIGHT / 2))  # テキストボックスのサイズ取得
+        screen.blit(text_ope, [text_ope_rect.left, text_ope_rect.top + 100])  # テキストの描写
         pygame.display.update()
 
         # イベント処理
