@@ -1,8 +1,6 @@
 # coding:utf-8
 import pygame
-from pygame.locals import *
-import sys
-import mode_start
+from project import mode_start
 
 
 def main(_mode):
