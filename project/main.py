@@ -2,7 +2,7 @@
 import pygame
 from pygame.locals import *
 import sys
-from project import header as h, mode_start, mode_under_dev
+from project import header as h, mode_start, mode_gamestage, mode_under_dev
 
 
 def main(_mode):
@@ -15,6 +15,8 @@ def main(_mode):
         if MODE is "START":
             MODE = mode_start.start(screen)
         elif MODE is "STAGE":
+            MODE = mode_gamestage.game_stage(screen)
+        elif MODE is "END":
             MODE = mode_under_dev.under_development(screen)
 
 
