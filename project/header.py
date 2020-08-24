@@ -1,4 +1,3 @@
 # coding:utf-8
-import pygame
-from pygame.locals import *
-import sys
+SCREEN_WIDTH = 640
+SCREEN_HEIGHT = 480
