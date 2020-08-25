@@ -1,9 +1,8 @@
 import pygame
-from pygame.locals import *
-
+from project import header as h
 
 class rectangle:
-    def __init__(self, _object, _is_alpha=True, _color=(0, 0, 0), _size_font=60):
+    def __init__(self, _object, _is_alpha=True, is_centering=False , _color=(0, 0, 0), _size_font=60):
         self._obj = None
         self._rect = None
         self._type = None
@@ -19,7 +18,10 @@ class rectangle:
             font = pygame.font.Font(None, _size_font)
             self._obj = font.render(_object, _is_alpha, _color)
 
-        self._rect = self._obj.get_rect()
+        if is_centering:
+            self._rect = self._obj.get_rect(center=(h.SCREEN_WIDTH / 2, h.SCREEN_HEIGHT / 2))
+        else:
+            self._rect = self._obj.get_rect()
 
     def get_obj(self):
         return self._obj
