@@ -1,15 +1,16 @@
 import pygame
 from project import header as h
 
-class rectangle:
-    def __init__(self, _object, _is_alpha=True, is_centering=False , _color=(0, 0, 0), _size_font=60):
+
+class Rectangle:
+    def __init__(self, _object, _is_alpha=True, is_centering=False, _color=(0, 0, 0), _size_font=60):
         self._obj = None
         self._rect = None
         self._type = None
         # 読み込むオブジェクトが画像
         if "./" in _object:
             self._type = "img"
-            if _is_alpha == True:
+            if _is_alpha:
                 self._obj = pygame.image.load(_object).convert_alpha()  # 読み込みとピクセル形式の変更（透過あり）
             else:
                 self._obj = pygame.image.load(_object).convert_alpha()  # 読み込みとピクセル形式の変更（透過あり）

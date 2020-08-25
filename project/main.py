@@ -4,7 +4,9 @@ from pygame.locals import *
 import sys
 from project import header as h, mode_start, mode_gamestage, mode_under_dev
 
+# START, STAGE, END
 mode_initial = "STAGE"
+
 
 def main(_mode):
     MODE = _mode

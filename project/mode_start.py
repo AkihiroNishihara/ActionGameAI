@@ -1,17 +1,17 @@
 import pygame
 from pygame.locals import *
 import sys
-from project import generate_rect
+from project import class_generate_rect
 
 
 def start(screen):
     mode_next = "STAGE"
     is_loop = True
 
-    rect_title = generate_rect.rectangle("Action Game AI", is_centering=True, _color=(255, 0, 0), _size_font=80)
+    rect_title = class_generate_rect.Rectangle("Action Game AI", is_centering=True, _color=(255, 0, 0), _size_font=80)
     rect_title.update_pos_rect(0, -100)
 
-    rect_ope = generate_rect.rectangle("press 'z' to play game", is_centering=True, _color=(0, 255, 0), _size_font=40)
+    rect_ope = class_generate_rect.Rectangle("press Enter to play game", is_centering=True, _color=(0, 255, 0), _size_font=40)
     rect_ope.update_pos_rect(0, 100)
 
     while (is_loop):
@@ -28,7 +28,7 @@ def start(screen):
                 pygame.quit()
                 sys.exit()
             elif event.type == KEYDOWN:
-                if event.key == K_z:
+                if event.key == K_RETURN:
                     is_loop = False
 
     return mode_next
