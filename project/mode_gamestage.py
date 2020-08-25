@@ -18,21 +18,37 @@ def game_stage(screen):
     font = pygame.font.Font(None, 60)
     # ステージ情報のロード(0:空，1:ブロック，2:player，3:ゴール)
     list_info_stage, list_pos_player_ini = load_info_gamestage()
-    # 画像のロードおよび情報取得
+
+    # 長方形オブジェクトの生成
     rect_player = generate_rect.rectangle("./image/player.png", _is_alpha=True)
     rect_brick = generate_rect.rectangle("./image/brick.png", _is_alpha=False)
     rect_goal = generate_rect.rectangle("./image/goal.png", _is_alpha=True)
-    # テキストの設定
     rect_gameover = generate_rect.rectangle("Game Over", _is_alpha=True, is_centering=True, _color=(50, 50, 50),
                                             _size_font=60)
+    rect_ope = generate_rect.rectangle("press Z", _is_alpha=True, is_centering=True, _color=(0, 255, 0), _size_font=60)
+
+    # 長方形オブジェクトのの初期位置更新
     rect_gameover.update_pos_rect(0, -50)
-    # プレイヤーの初期位置更新
+    rect_ope.update_pos_rect(0, 100)
     rect_player.update_pos_rect(h.SIZE_BLOCK * list_pos_player_ini[1], h.SIZE_BLOCK * list_pos_player_ini[0])
 
-    while (is_loop):
+    while is_loop:
         pygame.display.update()  # 画面の更新
-
         pygame.time.wait(30)  # 更新時間間隔
+
+        # 移動処理(長押し)
+        if not is_game_over:
+            key_pressed = pygame.key.get_pressed()
+            if key_pressed[K_LEFT]:
+                rect_player.update_pos_rect(-DIST_BASE_MOVE, 0)
+            if key_pressed[K_RIGHT]:
+                rect_player.update_pos_rect(DIST_BASE_MOVE, 0)
+            if key_pressed[K_DOWN]:
+                rect_player.update_pos_rect(0, DIST_BASE_MOVE)
+            if key_pressed[K_UP]:
+                rect_player.update_pos_rect(0, -DIST_BASE_MOVE)
+
+        # ベース描写
         screen.fill((200, 255, 255))
         pygame.draw.rect(screen, (200, 200, 200), Rect(0, 0, h.SCREEN_WIDTH, h.SIZE_BLOCK))  # 画面上部の四角形の描写
 
@@ -50,21 +66,11 @@ def game_stage(screen):
             elif list_info_stage[i][j] == 2:
                 screen.blit(rect_goal.get_obj(), [h.SIZE_BLOCK * j, h.SIZE_BLOCK * i])
         # プレイヤー描写
-        # 移動処理(長押し)
-        if not is_game_over:
-            key_pressed = pygame.key.get_pressed()
-            if key_pressed[K_LEFT]:
-                rect_player.update_pos_rect(-DIST_BASE_MOVE, 0)
-            if key_pressed[K_RIGHT]:
-                rect_player.update_pos_rect(DIST_BASE_MOVE, 0)
-            if key_pressed[K_DOWN]:
-                rect_player.update_pos_rect(0, DIST_BASE_MOVE)
-            if key_pressed[K_UP]:
-                rect_player.update_pos_rect(0, -DIST_BASE_MOVE)
         screen.blit(rect_player.get_obj(), rect_player.get_pos())
 
         # 終了イベント処理
-        for event in pygame.event.get():
+        list_event = pygame.event.get()
+        for event in list_event:
             if event.type == QUIT:
                 pygame.quit()
                 sys.exit()
@@ -72,15 +78,15 @@ def game_stage(screen):
                 if event.key == K_ESCAPE:
                     pygame.quit()
                     sys.exit()
-                elif event.key == K_z:
-                    is_loop = False
 
         # ゲームオーバー処理
         is_game_over = check_is_gameover(time_remain)
         if is_game_over:
             screen.blit(rect_gameover.get_obj(), rect_gameover.get_pos())
-            if time_remain < -3:
-                is_loop = False
+            screen.blit(rect_ope.get_obj(), rect_ope.get_pos())
+            for event in list_event:
+                if event.key == K_z:
+                    is_loop = False
     return mode_next
 
 
