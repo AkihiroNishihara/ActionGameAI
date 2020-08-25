@@ -1,7 +1,7 @@
 import pygame
 from pygame.locals import *
 import sys
-from project import class_generate_rect
+from project import class_generate_rect, header as h
 
 
 class Start:
@@ -28,8 +28,7 @@ class Start:
             # イベント処理
             for event in pygame.event.get():
                 if event.type == QUIT:
-                    pygame.quit()
-                    sys.exit()
+                    h.operation_finish()
                 elif event.type == KEYDOWN:
                     if event.key == K_RETURN:
                         _is_loop = False

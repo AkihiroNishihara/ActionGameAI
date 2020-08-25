@@ -24,7 +24,7 @@ class ActionGame:
                 mode_current = mode_gamestage.GameStage(_screen)
                 self.MODE = mode_current.get_mode_next()
             elif self.MODE is "END":
-                self.MODE = mode_under_dev.under_development(_screen)
+                mode_current = mode_under_dev.UnderDevelopment(_screen)
 
 
 if __name__ == '__main__':
