@@ -1,29 +1,23 @@
 import pygame
 from pygame.locals import *
 import sys
-from project import header as h
+from project import generate_rect
 
 
 def start(screen):
-    size_font = 80
     mode_next = "STAGE"
     is_loop = True
-    # フォントの定義
-    font = pygame.font.Font(None, size_font)
+
+    rect_title = generate_rect.rectangle("Action Game AI", is_centering=True, _color=(255, 0, 0), _size_font=80)
+    rect_title.update_pos_rect(0, -100)
+
+    rect_ope = generate_rect.rectangle("press 'z' to play game", is_centering=True, _color=(0, 255, 0), _size_font=40)
+    rect_ope.update_pos_rect(0, 100)
 
     while (is_loop):
         screen.fill((255, 255, 255))
-        str_title = "Action Game AI"
-        str_ope = "press 'z' to play game"
-
-        # テキストの描写
-        text_title = font.render(str_title, True, (255, 0, 0))  # テキストの作成
-        text_title_rect = text_title.get_rect(center=(h.SCREEN_WIDTH / 2, h.SCREEN_HEIGHT / 2))  # テキストボックスのサイズ取得
-        screen.blit(text_title, [text_title_rect.left, text_title_rect.top - 100])        # テキストの描写
-
-        text_ope = font.render(str_ope, True, (0, 255, 0))
-        text_ope_rect = text_ope.get_rect(center=(h.SCREEN_WIDTH / 2, h.SCREEN_HEIGHT / 2))
-        screen.blit(text_ope, [text_ope_rect.left, text_ope_rect.top + 100])
+        screen.blit(rect_title.get_obj(), rect_title.get_pos())  # テキストの描写
+        screen.blit(rect_ope.get_obj(), rect_ope.get_pos())  # テキストの描写
 
         # 画面の更新
         pygame.display.update()

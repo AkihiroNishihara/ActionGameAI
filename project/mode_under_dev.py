@@ -15,7 +15,7 @@ def under_development(screen):
     rect_title = generate_rect.rectangle("Under Development", is_centering=True, _color=(255, 0, 0), _size_font=40)
     rect_title.update_pos_rect(0, -100)
 
-    rect_ope = generate_rect.rectangle("press Z", is_centering=True, _color=(255, 0, 0), _size_font=40)
+    rect_ope = generate_rect.rectangle("press Z", is_centering=True, _color=(0, 255, 0), _size_font=40)
     rect_ope.update_pos_rect(0, 100)
 
     while (is_loop):
