@@ -5,23 +5,27 @@ import sys
 from project import header as h, mode_start, mode_gamestage, mode_under_dev
 
 # START, STAGE, END
-mode_initial = "STAGE"
+mode_initial = "START"
 
 
-def main(_mode):
-    MODE = _mode
-    pygame.init()
-    pygame.display.set_caption("Action Game AI")
-    screen = pygame.display.set_mode((h.SCREEN_WIDTH, h.SCREEN_HEIGHT))
+class ActionGame:
+    def __init__(self, _mode_ini):
+        self.MODE = _mode_ini
+        pygame.init()
+        pygame.display.set_caption("Action Game AI")
+        _screen = pygame.display.set_mode((h.SCREEN_WIDTH, h.SCREEN_HEIGHT))
 
-    while (1):
-        if MODE is "START":
-            MODE = mode_start.start(screen)
-        elif MODE is "STAGE":
-            MODE = mode_gamestage.game_stage(screen)
-        elif MODE is "END":
-            MODE = mode_under_dev.under_development(screen)
+        while True:
+            mode_current = None
+            if self.MODE is "START":
+                mode_current = mode_start.Start(_screen)
+                self.MODE = mode_current.get_mode_next()
+            elif self.MODE is "STAGE":
+                mode_current = mode_gamestage.GameStage(_screen)
+                self.MODE = mode_current.get_mode_next()
+            elif self.MODE is "END":
+                self.MODE = mode_under_dev.under_development(_screen)
 
 
 if __name__ == '__main__':
-    main(mode_initial)
+    ActionGame(mode_initial)
