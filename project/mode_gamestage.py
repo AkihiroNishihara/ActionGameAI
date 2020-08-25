@@ -14,6 +14,7 @@ def game_stage(screen):
     is_loop = True
     is_game_over = False
     time_start = pygame.time.get_ticks()
+    time_elapsed = 0
     # フォントの定義
     font = pygame.font.Font(None, 60)
     # ステージ情報のロード(0:空，1:ブロック，2:player，3:ゴール)
@@ -25,6 +26,8 @@ def game_stage(screen):
     rect_goal = generate_rect.rectangle("./image/goal.png", _is_alpha=True)
     rect_gameover = generate_rect.rectangle("Game Over", _is_alpha=True, is_centering=True, _color=(50, 50, 50),
                                             _size_font=60)
+    rect_clear = generate_rect.rectangle("Game Clear", _is_alpha=True, is_centering=True, _color=(50, 50, 50),
+                                         _size_font=60)
     rect_ope = generate_rect.rectangle("press Z", _is_alpha=True, is_centering=True, _color=(0, 255, 0), _size_font=60)
 
     # 長方形オブジェクトのの初期位置更新
@@ -53,7 +56,8 @@ def game_stage(screen):
         pygame.draw.rect(screen, (200, 200, 200), Rect(0, 0, h.SCREEN_WIDTH, h.SIZE_BLOCK))  # 画面上部の四角形の描写
 
         # 経過時間の描写
-        time_elapsed = int((pygame.time.get_ticks() - time_start) / 1000)
+        if not is_game_over:
+            time_elapsed = int((pygame.time.get_ticks() - time_start) / 1000)
         time_remain = TIME_STAGE - time_elapsed
         text_time_remain = font.render(str(max(0, time_remain)), True, (255, 0, 0))  # テキストの作成
         screen.blit(text_time_remain, [0, 0])  # テキストの描写
@@ -80,7 +84,7 @@ def game_stage(screen):
                     sys.exit()
 
         # ゲームオーバー処理
-        is_game_over = check_is_gameover(time_remain)
+        is_game_over = check_is_gameover(time_remain, rect_player)
         if is_game_over:
             screen.blit(rect_gameover.get_obj(), rect_gameover.get_pos())
             screen.blit(rect_ope.get_obj(), rect_ope.get_pos())
@@ -108,8 +112,13 @@ def load_info_gamestage():
     return list_info_gamestage, list_pos_player_ini
 
 
-def check_is_gameover(_time_remain):
+# 経過時間あるいはプレイヤーの位置によるゲームオーバー判定
+def check_is_gameover(_time_remain, _rect_player):
     is_gameover = False
     if _time_remain < 0:
         is_gameover = True
+    coordinate_bottom_player = (_rect_player.get_pos()).bottom
+    if coordinate_bottom_player >= h.SCREEN_HEIGHT:
+        is_gameover = True
+
     return is_gameover
