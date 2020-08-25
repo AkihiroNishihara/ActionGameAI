@@ -23,7 +23,9 @@ def game_stage(screen):
     rect_brick = generate_rect.rectangle("./image/brick.png", _is_alpha=False)
     rect_goal = generate_rect.rectangle("./image/goal.png", _is_alpha=True)
     # テキストの設定
-    rect_gameover = generate_rect.rectangle("Game Over", _is_alpha=True, _color=(50, 50, 50), _size_font=60)
+    rect_gameover = generate_rect.rectangle("Game Over", _is_alpha=True, is_centering=True, _color=(50, 50, 50),
+                                            _size_font=60)
+    rect_gameover.update_pos_rect(0, -50)
     # プレイヤーの初期位置更新
     rect_player.update_pos_rect(h.SIZE_BLOCK * list_pos_player_ini[1], h.SIZE_BLOCK * list_pos_player_ini[0])
 
@@ -102,6 +104,6 @@ def load_info_gamestage():
 
 def check_is_gameover(_time_remain):
     is_gameover = False
-    if _time_remain == 0:
+    if _time_remain < 0:
         is_gameover = True
     return is_gameover
