@@ -3,7 +3,7 @@ import sys, pygame
 
 SCREEN_WIDTH = 640
 SCREEN_HEIGHT = 480
-SIZE_BLOCK = 40  # 画像ブロックの一辺のサイズ(px)
+SIZE_IMAGE_UNIT = 40  # 画像ブロックの一辺のサイズ(px)
 
 
 # 強制終了の処理

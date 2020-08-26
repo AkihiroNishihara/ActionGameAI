@@ -5,6 +5,7 @@ from project import class_generate_rect, header as h
 
 class UnderDevelopment:
     def __init__(self, _screen):
+        self.mode_next = "START"
         _is_loop = True
         _rect_title = class_generate_rect.Rectangle("Under Development", is_centering=True, _color=(255, 0, 0),
                                                     _size_font=40)
@@ -25,4 +26,7 @@ class UnderDevelopment:
                     h.operation_finish()
                 elif event.type == KEYDOWN:
                     if event.key == K_RETURN:
-                        h.operation_finish()
+                        _is_loop = False
+
+    def get_mode_next(self):
+        return self.mode_next

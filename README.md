@@ -5,5 +5,6 @@
 
 ## referenced URL
 ### Pygame:
-[【Pygame入門】ゲームプログラミング【Python】 | 西住工房](https://algorithm.joho.info/programming/python/pygame/)
+[【Pygame入門】ゲームプログラミング【Python】 | 西住工房](https://algorithm.joho.info/programming/python/pygame/)<br>
+[ブロックとの衝突判定 - 人工知能に関する断創録](http://aidiary.hatenablog.com/entry/20081129/1281614716)
 
