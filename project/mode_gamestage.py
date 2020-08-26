@@ -17,14 +17,14 @@ class GameStage:
         self.mode_next = "END"
         self.screen = _screen_class_arg
         self.is_loop = True
-        _is_game_over = False
-        _is_game_clear = False
+        self.is_game_over = False
+        self.is_game_clear = False
         _time_start = pygame.time.get_ticks()
         _time_elapsed = 0
         # フォントの定義
         _font = pygame.font.Font(None, 60)
         # ステージ情報のロード(0:空，1:ブロック，2:player，3:ゴール)
-        _list_info_stage, _list_pos_player_ini, _list_pos_goal_ini = self._load_info_gamestage()
+        self.list_info_stage, _list_pos_player_ini, _list_pos_goal_ini = self._load_info_gamestage()
 
         # テキストオブジェクトの生成
         self.rect_gameover = class_generate_rect.Rectangle("Game Over", _is_alpha=True, is_centering=True,
@@ -39,22 +39,29 @@ class GameStage:
         self.rect_ope.update_pos_rect(0, 100)
 
         # 画像のロード
+        Player.left_image = pygame.image.load("./image/player.png").convert_alpha()  # 左向き
+        Player.right_image = pygame.transform.flip(Player.left_image, 1, 0)  # 右向き
+        Block.image = pygame.image.load("./image/brick.png").convert_alpha()
+        Goal.image = pygame.image.load("./image/goal.png").convert_alpha()
 
         # スプライトグループの作成
-        self.rect_player = class_generate_rect.Rectangle("./image/player.png", _is_alpha=True)
-        self.rect_brick = class_generate_rect.Rectangle("./image/brick.png", _is_alpha=False)
-        self.rect_goal = class_generate_rect.Rectangle("./image/goal.png", _is_alpha=True)
-        self.rect_player.update_pos_rect(h.SIZE_IMAGE_UNIT * _list_pos_player_ini[1],
-                                         h.SIZE_IMAGE_UNIT * _list_pos_player_ini[0])
-        self.rect_goal.update_pos_rect(h.SIZE_IMAGE_UNIT * _list_pos_goal_ini[1],
-                                       h.SIZE_IMAGE_UNIT * _list_pos_goal_ini[0])
+        self.all = pygame.sprite.RenderUpdates()
+        self.blocks = pygame.sprite.Group()
+        Player.containers = self.all
+        Block.containers = self.all, self.blocks
+        Goal.containers = self.all
+
+        # 各スプライトの生成
+        self._create_blocks()
+        Player(self._get_pos_top_left(_list_pos_player_ini), self.blocks)
+        Goal(self._get_pos_top_left(_list_pos_player_ini))
 
         while self.is_loop:
             pygame.display.update()  # 画面の更新
             pygame.time.wait(30)  # 更新時間間隔(30fps)
 
             # 移動処理(長押し)
-            if not _is_game_over and not _is_game_clear:
+            if not self.is_game_over and not self.is_game_clear:
                 _key_pressed = pygame.key.get_pressed()
                 if _key_pressed[K_LEFT]:
                     self.rect_player.update_pos_rect(-DIST_BASE_MOVE, 0)
@@ -70,7 +77,7 @@ class GameStage:
             pygame.draw.rect(self.screen, (200, 200, 200), Rect(0, 0, h.SCREEN_WIDTH, h.SIZE_IMAGE_UNIT))  # 画面上部の四角形の描写
 
             # 経過時間の描写
-            if not _is_game_over and not _is_game_clear:
+            if not self.is_game_over and not self.is_game_clear:
                 _time_elapsed = int((pygame.time.get_ticks() - _time_start) / 1000)
             self.time_remain = TIME_STAGE - _time_elapsed
             _text_time_remain = _font.render(str(max(0, self.time_remain)), True, (255, 0, 0))  # テキストの作成
@@ -98,8 +105,8 @@ class GameStage:
             # クリア処理
             dist_goal = self._get_dist_goal()  # ゴールまでの距離
             if dist_goal <= h.SIZE_IMAGE_UNIT:
-                _is_game_clear = True
-            if _is_game_clear:
+                self.is_game_clear = True
+            if self.is_game_clear:
                 self._process_gameclear()
                 # self.screen.blit(self.rect_gameclear.get_obj(), self.rect_gameover.get_pos())
                 # self.screen.blit(self.rect_ope.get_obj(), self.rect_ope.get_pos())
@@ -108,8 +115,8 @@ class GameStage:
                 #         _is_loop = False
 
             # ゲームオーバー処理
-            _is_game_over = self._check_is_gameover()
-            if _is_game_over:
+            self.is_game_over = self._check_is_gameover()
+            if self.is_game_over:
                 self._process_gameover()
                 # self._screen.blit(self.rect_gameover.get_obj(), self.rect_gameover.get_pos())
                 # self._screen.blit(self.rect_ope.get_obj(), self.rect_ope.get_pos())
@@ -168,6 +175,15 @@ class GameStage:
         for event in self.list_event:
             if event.key == K_RETURN:
                 self.is_loop = False
+
+    def _get_pos_top_left(self, xy):
+        return tuple([h.SIZE_IMAGE_UNIT * xy[1], h.SIZE_IMAGE_UNIT * xy[0]])
+
+    def _create_blocks(self):
+        for i, j in itertools.product(range(1, int(h.SCREEN_HEIGHT / h.SIZE_IMAGE_UNIT)),
+                                      range(int(h.SCREEN_WIDTH / h.SIZE_IMAGE_UNIT))):
+            if self.list_info_stage[i][j] == 1:
+                Block(self._get_pos_top_left([i, j]))
 
     def get_mode_next(self):
         return self.mode_next
@@ -291,16 +307,14 @@ class Player(pygame.sprite.Sprite):
 
 
 class Block(pygame.sprite.Sprite):
-    def __init__(self, _pos, _path_filename):
-        self.image = pygame.image.load(_path_filename).convert_alpha()
+    def __init__(self, _pos):
         pygame.sprite.Sprite.__init__(self, self.containers)
         self.rect = self.image.get_rect()
         self.rect.top_left = _pos
 
 
 class Goal(pygame.sprite.Sprite):
-    def __init__(self, _pos, _path_filename):
-        self.image = pygame.image.load(_path_filename).convert_alpha()
+    def __init__(self, _pos):
         pygame.sprite.Sprite.__init__(self, self.containers)
         self.rect = self.image.get_rect()
         self.rect.top_left = _pos
