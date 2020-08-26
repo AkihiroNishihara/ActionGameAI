@@ -1,7 +1,7 @@
 # coding:utf-8
 import pygame
 import os
-from project import header as h, mode_start, mode_gamestage_old, mode_under_dev
+from project import header as h, mode_start, mode_gamestage, mode_under_dev
 
 # START, STAGE, END
 mode_initial = "START"
@@ -14,13 +14,13 @@ class ActionGame:
         pygame.display.set_caption("Action Game AI")
         _screen = pygame.display.set_mode((h.SCREEN_WIDTH, h.SCREEN_HEIGHT))
 
+        mode_current = None
         while True:
-            mode_current = None
             if self.MODE is "START":
                 mode_current = mode_start.Start(_screen)
                 self.MODE = mode_current.get_mode_next()
             elif self.MODE is "STAGE":
-                mode_current = mode_gamestage_old.GameStage(_screen)
+                mode_current = mode_gamestage.GameStage(_screen)
                 self.MODE = mode_current.get_mode_next()
             elif self.MODE is "END":
                 mode_current = mode_under_dev.UnderDevelopment(_screen)
