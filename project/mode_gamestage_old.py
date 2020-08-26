@@ -26,7 +26,10 @@ class GameStage:
         # ステージ情報のロード(0:空，1:ブロック，2:player，3:ゴール)
         _list_info_stage, _list_pos_player_ini, _list_pos_goal_ini = self._load_info_gamestage()
 
-        # テキストオブジェクトの生成
+        # 長方形オブジェクトの生成
+        self.rect_player = class_generate_rect.Rectangle("./image/player.png", _is_alpha=True)
+        self.rect_brick = class_generate_rect.Rectangle("./image/brick.png", _is_alpha=False)
+        self.rect_goal = class_generate_rect.Rectangle("./image/goal.png", _is_alpha=True)
         self.rect_gameover = class_generate_rect.Rectangle("Game Over", _is_alpha=True, is_centering=True,
                                                            _color=(50, 50, 50), _size_font=60)
         self.rect_gameclear = class_generate_rect.Rectangle("Game Clear", _is_alpha=True, is_centering=True,
@@ -34,20 +37,11 @@ class GameStage:
         self.rect_ope = class_generate_rect.Rectangle("press Enter", _is_alpha=True, is_centering=True,
                                                       _color=(0, 255, 0), _size_font=60)
 
-        # テキストオブジェクトの初期位置更新
+        # 長方形オブジェクトの初期位置更新
         self.rect_gameover.update_pos_rect(0, -50)
         self.rect_ope.update_pos_rect(0, 100)
-
-        # 画像のロード
-
-        # スプライトグループの作成
-        self.rect_player = class_generate_rect.Rectangle("./image/player.png", _is_alpha=True)
-        self.rect_brick = class_generate_rect.Rectangle("./image/brick.png", _is_alpha=False)
-        self.rect_goal = class_generate_rect.Rectangle("./image/goal.png", _is_alpha=True)
-        self.rect_player.update_pos_rect(h.SIZE_IMAGE_UNIT * _list_pos_player_ini[1],
-                                         h.SIZE_IMAGE_UNIT * _list_pos_player_ini[0])
-        self.rect_goal.update_pos_rect(h.SIZE_IMAGE_UNIT * _list_pos_goal_ini[1],
-                                       h.SIZE_IMAGE_UNIT * _list_pos_goal_ini[0])
+        self.rect_player.update_pos_rect(h.SIZE_IMAGE_UNIT * _list_pos_player_ini[1], h.SIZE_IMAGE_UNIT * _list_pos_player_ini[0])
+        self.rect_goal.update_pos_rect(h.SIZE_IMAGE_UNIT * _list_pos_goal_ini[1], h.SIZE_IMAGE_UNIT * _list_pos_goal_ini[0])
 
         while self.is_loop:
             pygame.display.update()  # 画面の更新
@@ -171,139 +165,6 @@ class GameStage:
 
     def get_mode_next(self):
         return self.mode_next
-
-
-class Player(pygame.sprite.Sprite):
-    """パイソン"""
-    MOVE_SPEED = 2.5  # 移動速度
-    JUMP_SPEED = 6.0  # ジャンプの初速度
-    GRAVITY = 0.2  # 重力加速度
-
-    def __init__(self, pos, blocks):
-        pygame.sprite.Sprite.__init__(self, self.containers)
-        self.image = self.right_image
-        self.rect = self.image.get_rect()
-        self.rect.x, self.rect.y = pos[0], pos[1]  # 座標設定
-        self.blocks = blocks  # 衝突判定用
-
-        # 浮動小数点の位置と速度
-        self.fpx = float(self.rect.x)
-        self.fpy = float(self.rect.y)
-        self.fpvx = 0.0
-        self.fpvy = 0.0
-
-        # 地面にいるか？
-        self.on_floor = False
-
-    def update(self):
-        """スプライトの更新"""
-        # キー入力取得
-        pressed_keys = pygame.key.get_pressed()
-
-        # 左右移動
-        if pressed_keys[K_RIGHT]:
-            self.image = self.right_image
-            self.fpvx = self.MOVE_SPEED
-        elif pressed_keys[K_LEFT]:
-            self.image = self.left_image
-            self.fpvx = -self.MOVE_SPEED
-        else:
-            self.fpvx = 0.0
-
-        # ジャンプ
-        if pressed_keys[K_UP] or pressed_keys[K_SPACE]:
-            if self.on_floor:
-                self.fpvy = - self.JUMP_SPEED  # 上向きに初速度を与える
-                self.on_floor = False
-
-        # 速度を更新
-        if not self.on_floor:
-            self.fpvy += self.GRAVITY  # 下向きに重力をかける
-
-        # X方向の衝突判定処理
-        self.collision_x()
-
-        # この時点でX方向に関しては衝突がないことが保証されてる
-
-        # Y方向の衝突判定処理
-        self.collision_y()
-
-        # 浮動小数点の位置を整数座標に戻す
-        # スプライトを動かすにはself.rectの更新が必要！
-        self.rect.x = int(self.fpx)
-        self.rect.y = int(self.fpy)
-
-    def collision_x(self):
-        """X方向の衝突判定処理"""
-        # パイソンのサイズ
-        width = self.rect.width
-        height = self.rect.height
-
-        # X方向の移動先の座標と矩形を求める
-        newx = self.fpx + self.fpvx
-        newrect = Rect(newx, self.fpy, width, height)
-
-        # ブロックとの衝突判定
-        for block in self.blocks:
-            collide = newrect.colliderect(block.rect)
-            if collide:  # 衝突するブロックあり
-                if self.fpvx > 0:  # 右に移動中に衝突
-                    # めり込まないように調整して速度を0に
-                    self.fpx = block.rect.left - width
-                    self.fpvx = 0
-                elif self.fpvx < 0:  # 左に移動中に衝突
-                    self.fpx = block.rect.right
-                    self.fpvx = 0
-                break  # 衝突ブロックは1個調べれば十分
-            else:
-                # 衝突ブロックがない場合、位置を更新
-                self.fpx = newx
-
-    def collision_y(self):
-        """Y方向の衝突判定処理"""
-        # パイソンのサイズ
-        width = self.rect.width
-        height = self.rect.height
-
-        # Y方向の移動先の座標と矩形を求める
-        newy = self.fpy + self.fpvy
-        newrect = Rect(self.fpx, newy, width, height)
-
-        # ブロックとの衝突判定
-        for block in self.blocks:
-            collide = newrect.colliderect(block.rect)
-            if collide:  # 衝突するブロックあり
-                if self.fpvy > 0:  # 下に移動中に衝突
-                    # めり込まないように調整して速度を0に
-                    self.fpy = block.rect.top - height
-                    self.fpvy = 0
-                    # 下に移動中に衝突したなら床の上にいる
-                    self.on_floor = True
-                elif self.fpvy < 0:  # 上に移動中に衝突
-                    self.fpy = block.rect.bottom
-                    self.fpvy = 0
-                break  # 衝突ブロックは1個調べれば十分
-            else:
-                # 衝突ブロックがない場合、位置を更新
-                self.fpy = newy
-                # 衝突ブロックがないなら床の上にいない
-                self.on_floor = False
-
-
-class Block(pygame.sprite.Sprite):
-    def __init__(self, _pos, _path_filename):
-        self.image = pygame.image.load(_path_filename).convert_alpha()
-        pygame.sprite.Sprite.__init__(self, self.containers)
-        self.rect = self.image.get_rect()
-        self.rect.top_left = _pos
-
-
-class Goal(pygame.sprite.Sprite):
-    def __init__(self, _pos, _path_filename):
-        self.image = pygame.image.load(_path_filename).convert_alpha()
-        pygame.sprite.Sprite.__init__(self, self.containers)
-        self.rect = self.image.get_rect()
-        self.rect.top_left = _pos
 
 
 class CoordinateAroundPlayer:
