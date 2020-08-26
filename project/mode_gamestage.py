@@ -19,10 +19,10 @@ class GameStage:
         self.is_loop = True
         self.is_game_over = False
         self.is_game_clear = False
-        _time_start = pygame.time.get_ticks()
-        _time_elapsed = 0
+        self.time_start = pygame.time.get_ticks()
+        self.time_remain = TIME_STAGE
         # フォントの定義
-        _font = pygame.font.Font(None, 60)
+        self.font = pygame.font.Font(None, 60)
         # ステージ情報のロード(0:空，1:ブロック，2:player，3:ゴール)
         self.list_info_stage, _list_pos_player_ini, _list_pos_goal_ini = self._load_info_gamestage()
 
@@ -56,73 +56,84 @@ class GameStage:
         Player(self._get_pos_top_left(_list_pos_player_ini), self.blocks)
         Goal(self._get_pos_top_left(_list_pos_player_ini))
 
+        # メインループ
+        clock = pygame.time.Clock()
+
         while self.is_loop:
-            pygame.display.update()  # 画面の更新
-            pygame.time.wait(30)  # 更新時間間隔(30fps)
+            clock.tick(60)
+            self._get_time_remain()
+            self._update()
+            self._draw()
+            pygame.display.update()
+            # self.key_handler()
 
-            # 移動処理(長押し)
-            if not self.is_game_over and not self.is_game_clear:
-                _key_pressed = pygame.key.get_pressed()
-                if _key_pressed[K_LEFT]:
-                    self.rect_player.update_pos_rect(-DIST_BASE_MOVE, 0)
-                if _key_pressed[K_RIGHT]:
-                    self.rect_player.update_pos_rect(DIST_BASE_MOVE, 0)
-                if _key_pressed[K_DOWN]:
-                    self.rect_player.update_pos_rect(0, DIST_BASE_MOVE)
-                if _key_pressed[K_UP]:
-                    self.rect_player.update_pos_rect(0, -DIST_BASE_MOVE)
-
-            # ベース描写
-            self.screen.fill((200, 255, 255))
-            pygame.draw.rect(self.screen, (200, 200, 200), Rect(0, 0, h.SCREEN_WIDTH, h.SIZE_IMAGE_UNIT))  # 画面上部の四角形の描写
-
-            # 経過時間の描写
-            if not self.is_game_over and not self.is_game_clear:
-                _time_elapsed = int((pygame.time.get_ticks() - _time_start) / 1000)
-            self.time_remain = TIME_STAGE - _time_elapsed
-            _text_time_remain = _font.render(str(max(0, self.time_remain)), True, (255, 0, 0))  # テキストの作成
-            self.screen.blit(_text_time_remain, [0, 0])  # テキストの描写
-
-            # ブロックの描写
-            for i, j in itertools.product(range(1, int(h.SCREEN_HEIGHT / h.SIZE_IMAGE_UNIT)),
-                                          range(int(h.SCREEN_WIDTH / h.SIZE_IMAGE_UNIT))):
-                if _list_info_stage[i][j] == 1:
-                    self.screen.blit(self.rect_brick.get_obj(), [h.SIZE_IMAGE_UNIT * j, h.SIZE_IMAGE_UNIT * i])
-                elif _list_info_stage[i][j] == 2:
-                    self.screen.blit(self.rect_goal.get_obj(), [h.SIZE_IMAGE_UNIT * j, h.SIZE_IMAGE_UNIT * i])
-            # プレイヤー描写
-            self.screen.blit(self.rect_player.get_obj(), self.rect_player.get_pos())
-
-            # 終了イベント処理
-            self.list_event = pygame.event.get()
-            for event in self.list_event:
-                if event.type == QUIT:
-                    h.operation_finish()
-                if event.type == KEYDOWN:
-                    if event.key == K_ESCAPE:
-                        h.operation_finish()
-
-            # クリア処理
-            dist_goal = self._get_dist_goal()  # ゴールまでの距離
-            if dist_goal <= h.SIZE_IMAGE_UNIT:
-                self.is_game_clear = True
-            if self.is_game_clear:
-                self._process_gameclear()
-                # self.screen.blit(self.rect_gameclear.get_obj(), self.rect_gameover.get_pos())
-                # self.screen.blit(self.rect_ope.get_obj(), self.rect_ope.get_pos())
-                # for event in self.list_event:
-                #     if event.key == K_RETURN:
-                #         _is_loop = False
-
-            # ゲームオーバー処理
-            self.is_game_over = self._check_is_gameover()
-            if self.is_game_over:
-                self._process_gameover()
-                # self._screen.blit(self.rect_gameover.get_obj(), self.rect_gameover.get_pos())
-                # self._screen.blit(self.rect_ope.get_obj(), self.rect_ope.get_pos())
-                # for event in list_event:
-                #     if event.key == K_RETURN:
-                #         self._is_loop = False
+        # while self.is_loop:
+        #     pygame.display.update()  # 画面の更新
+        #     pygame.time.wait(30)  # 更新時間間隔(30fps)
+        #
+        #     # 移動処理(長押し)
+        #     if not self.is_game_over and not self.is_game_clear:
+        #         _key_pressed = pygame.key.get_pressed()
+        #         if _key_pressed[K_LEFT]:
+        #             self.rect_player.update_pos_rect(-DIST_BASE_MOVE, 0)
+        #         if _key_pressed[K_RIGHT]:
+        #             self.rect_player.update_pos_rect(DIST_BASE_MOVE, 0)
+        #         if _key_pressed[K_DOWN]:
+        #             self.rect_player.update_pos_rect(0, DIST_BASE_MOVE)
+        #         if _key_pressed[K_UP]:
+        #             self.rect_player.update_pos_rect(0, -DIST_BASE_MOVE)
+        #
+        #     # ベース描写
+        #     self.screen.fill((200, 255, 255))
+        #     pygame.draw.rect(self.screen, (200, 200, 200), Rect(0, 0, h.SCREEN_WIDTH, h.SIZE_IMAGE_UNIT))  # 画面上部の四角形の描写
+        #
+        #     # 経過時間の描写
+        #     if not self.is_game_over and not self.is_game_clear:
+        #         _time_elapsed = int((pygame.time.get_ticks() - _time_start) / 1000)
+        #     self.time_remain = TIME_STAGE - _time_elapsed
+        #     _text_time_remain = _font.render(str(max(0, self.time_remain)), True, (255, 0, 0))  # テキストの作成
+        #     self.screen.blit(_text_time_remain, [0, 0])  # テキストの描写
+        #
+        #     # ブロックの描写
+        #     for i, j in itertools.product(range(1, int(h.SCREEN_HEIGHT / h.SIZE_IMAGE_UNIT)),
+        #                                   range(int(h.SCREEN_WIDTH / h.SIZE_IMAGE_UNIT))):
+        #         if _list_info_stage[i][j] == 1:
+        #             self.screen.blit(self.rect_brick.get_obj(), [h.SIZE_IMAGE_UNIT * j, h.SIZE_IMAGE_UNIT * i])
+        #         elif _list_info_stage[i][j] == 2:
+        #             self.screen.blit(self.rect_goal.get_obj(), [h.SIZE_IMAGE_UNIT * j, h.SIZE_IMAGE_UNIT * i])
+        #     # プレイヤー描写
+        #     self.screen.blit(self.rect_player.get_obj(), self.rect_player.get_pos())
+        #
+        #     # 終了イベント処理
+        #     self.list_event = pygame.event.get()
+        #     for event in self.list_event:
+        #         if event.type == QUIT:
+        #             h.operation_finish()
+        #         if event.type == KEYDOWN:
+        #             if event.key == K_ESCAPE:
+        #                 h.operation_finish()
+        #
+        #     # クリア処理
+        #     dist_goal = self._get_dist_goal()  # ゴールまでの距離
+        #     if dist_goal <= h.SIZE_IMAGE_UNIT:
+        #         self.is_game_clear = True
+        #     if self.is_game_clear:
+        #         self._process_gameclear()
+        #         # self.screen.blit(self.rect_gameclear.get_obj(), self.rect_gameover.get_pos())
+        #         # self.screen.blit(self.rect_ope.get_obj(), self.rect_ope.get_pos())
+        #         # for event in self.list_event:
+        #         #     if event.key == K_RETURN:
+        #         #         _is_loop = False
+        #
+        #     # ゲームオーバー処理
+        #     self.is_game_over = self._check_is_gameover()
+        #     if self.is_game_over:
+        #         self._process_gameover()
+        #         # self._screen.blit(self.rect_gameover.get_obj(), self.rect_gameover.get_pos())
+        #         # self._screen.blit(self.rect_ope.get_obj(), self.rect_ope.get_pos())
+        #         # for event in list_event:
+        #         #     if event.key == K_RETURN:
+        #         #         self._is_loop = False
 
     # ステージのブロックの配置およびプレイヤーの初期位置の取得
     def _load_info_gamestage(self):
@@ -184,6 +195,29 @@ class GameStage:
                                       range(int(h.SCREEN_WIDTH / h.SIZE_IMAGE_UNIT))):
             if self.list_info_stage[i][j] == 1:
                 Block(self._get_pos_top_left([i, j]))
+
+    def _get_time_remain(self):
+        _time_elapsed = 0
+        if not self.is_game_over and not self.is_game_clear:
+            _time_elapsed = int((pygame.time.get_ticks() - self.time_start) / 1000)
+        return TIME_STAGE - _time_elapsed
+
+    def _update(self):
+        # スプライトの更新
+        self.all.update()
+
+    def _draw(self):
+        # 背景描写
+        self.screen.fill((200, 255, 255))
+        pygame.draw.rect(self.screen, (200, 200, 200), Rect(0, 0, h.SCREEN_WIDTH, h.SIZE_IMAGE_UNIT))  # 画面上部の四角形の描写
+
+        # 経過時間の描写
+        self.time_remain = self._get_time_remain()
+        _text_time_remain = self.font.render(str(max(0, self.time_remain)), True, (255, 0, 0))  # テキストの作成
+        self.screen.blit(_text_time_remain, [0, 0])
+
+        """スプライトの描画"""
+        self.all.draw(self.screen)
 
     def get_mode_next(self):
         return self.mode_next
