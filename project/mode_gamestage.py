@@ -1,6 +1,5 @@
 import pygame
 from pygame.locals import *
-import sys
 import itertools
 import numpy as np
 from project import header as h
@@ -10,15 +9,14 @@ TIME_STAGE = 100
 DIST_BASE_MOVE = 10
 
 
-# TODO:当たり判定が必要なブロック群をSprite処理
-
 class GameStage:
-    def __init__(self, _screen_class_arg):
+    def __init__(self, _screen_class_arg, _is_training=False):
         self.mode_next = "END"
         self.screen = _screen_class_arg
         self.is_loop = True
         self.is_game_over = False
         self.is_game_clear = False
+        self.dist = 1.0e14  # ゴールまでの距離（初期値）
         self.time_start = pygame.time.get_ticks()
         self.time_remain = TIME_STAGE
         self.time_elapsed = 0
@@ -61,7 +59,8 @@ class GameStage:
         clock = pygame.time.Clock()
 
         while self.is_loop:
-            clock.tick(60)
+            if not _is_training:
+                clock.tick(60)
             self._get_time_remain()
             self._update_sprite()
             self._draw()
@@ -173,6 +172,9 @@ class GameStage:
     def get_mode_next(self):
         return self.mode_next
 
+    def get_reward(self):
+        return self.di
+
 
 class Player(pygame.sprite.Sprite):
     MOVE_SPEED = 2.5  # 移動速度
@@ -202,39 +204,9 @@ class Player(pygame.sprite.Sprite):
         # キー入力取得
         if not self.is_on_ground and not self.is_touch_goal:
             pressed_keys = pygame.key.get_pressed()
+            tuple_pressed_key = (pressed_keys[K_RIGHT], pressed_keys[K_LEFT], pressed_keys[K_SPACE])
 
-            # 左右移動
-            if pressed_keys[K_RIGHT]:
-                self.image = self.right_image
-                self.fpvx = self.MOVE_SPEED
-            elif pressed_keys[K_LEFT]:
-                self.image = self.left_image
-                self.fpvx = -self.MOVE_SPEED
-            else:
-                self.fpvx = 0.0
-
-            # ジャンプ
-            if pressed_keys[K_UP] or pressed_keys[K_SPACE]:
-                if self.is_on_block:
-                    self.fpvy = - self.JUMP_SPEED  # 上向きに初速度を与える
-                    self.is_on_block = False
-
-            # 速度を更新
-            if not self.is_on_block:
-                self.fpvy += self.GRAVITY  # 下向きに重力をかける
-
-            # X方向の衝突判定処理
-            self._collision_x()
-
-            # この時点でX方向に関しては衝突がないことが保証されてる
-
-            # Y方向の衝突判定処理
-            self._collision_y()
-
-            # 浮動小数点の位置を整数座標に戻す
-            # スプライトを動かすにはself.rectの更新が必要！
-            self.rect.x = int(self.fpx)
-            self.rect.y = int(self.fpy)
+            self.action(tuple_pressed_key)
 
     def _collision_x(self):
         """X方向の衝突判定処理"""
@@ -320,6 +292,40 @@ class Player(pygame.sprite.Sprite):
 
     def get_is_touch_goal(self):
         return self.is_touch_goal
+
+    # _tuple_pressed_key = (right, left, space)
+    def action(self, _tuple_pressed_key):
+        if _tuple_pressed_key[0]:
+            self.image = self.right_image
+            self.fpvx = self.MOVE_SPEED
+        elif _tuple_pressed_key[1]:
+            self.image = self.left_image
+            self.fpvx = -self.MOVE_SPEED
+        else:
+            self.fpvx = 0.0
+
+        # ジャンプ
+        if _tuple_pressed_key[2]:
+            if self.is_on_block:
+                self.fpvy = - self.JUMP_SPEED  # 上向きに初速度を与える
+                self.is_on_block = False
+
+        # 速度を更新
+        if not self.is_on_block:
+            self.fpvy += self.GRAVITY  # 下向きに重力をかける
+
+        # X方向の衝突判定処理
+        self._collision_x()
+
+        # この時点でX方向に関しては衝突がないことが保証されてる
+
+        # Y方向の衝突判定処理
+        self._collision_y()
+
+        # 浮動小数点の位置を整数座標に戻す
+        # スプライトを動かすにはself.rectの更新が必要！
+        self.rect.x = int(self.fpx)
+        self.rect.y = int(self.fpy)
 
 
 class Block(pygame.sprite.Sprite):
