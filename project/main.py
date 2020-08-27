@@ -20,7 +20,7 @@ class ActionGame:
                 mode_current = mode_start.Start(_screen)
                 self.MODE = mode_current.get_mode_next()
             elif self.MODE is "STAGE":
-                mode_current = mode_gamestage.GameStage(_screen)
+                mode_current = mode_gamestage.GameStage(_screen, "./stage_sample.txt")
                 self.MODE = mode_current.get_mode_next()
             elif self.MODE is "END":
                 mode_current = mode_under_dev.UnderDevelopment(_screen)

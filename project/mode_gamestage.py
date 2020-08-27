@@ -10,7 +10,7 @@ DIST_BASE_MOVE = 10
 
 
 class GameStage:
-    def __init__(self, _screen_class_arg, _is_training=False):
+    def __init__(self, _screen_class_arg, _path_file_stage, _is_training=False):
         self.mode_next = "END"
         self.screen = _screen_class_arg
         self.is_loop = True
@@ -23,7 +23,7 @@ class GameStage:
         # フォントの定義
         self.font = pygame.font.Font(None, 60)
         # ステージ情報のロード(0:空，1:ブロック，2:player，3:ゴール)
-        self.list_info_stage, _list_pos_player_ini, _list_pos_goal_ini = self._load_info_gamestage()
+        self.list_info_stage, _list_pos_player_ini, _list_pos_goal_ini = self._load_info_gamestage(_path_file_stage)
 
         # テキストオブジェクトの生成
         self.rect_gameover = class_generate_rect.Rectangle("Game Over", _is_alpha=True, is_centering=True,
@@ -52,12 +52,11 @@ class GameStage:
 
         # 各スプライトの生成
         self._create_blocks()
-        player = Player(self._get_pos_topleft(_list_pos_player_ini), self.blocks)
+        self.player = Player(self._get_pos_topleft(_list_pos_player_ini), self.blocks)
         goal = Goal(self._get_pos_topleft(_list_pos_goal_ini))
 
         # メインループ
         clock = pygame.time.Clock()
-
         while self.is_loop:
             if not _is_training:
                 clock.tick(60)
@@ -75,22 +74,25 @@ class GameStage:
                     if event.key == K_ESCAPE:
                         h.operation_finish()
 
-            player.check_status(goal)
-            self.is_game_over = self._check_is_gameover(player)
+            self.player.check_status(goal)
+            self.is_game_over = self._check_is_gameover(self.player)
             if self.is_game_over:
                 self._process_gameover()
             if not self.is_game_over:
-                self.is_game_clear = player.get_is_touch_goal()
+                self.is_game_clear = self.player.get_is_touch_goal()
                 if self.is_game_clear:
                     self._process_gameclear()
             self._key_handler()
 
+            # 関数テスト用
+            # self.try_function()
+
     # ステージのブロックの配置およびプレイヤーの初期位置の取得
-    def _load_info_gamestage(self):
+    def _load_info_gamestage(self, _path_file_stage):
         list_info_gamestage = []
         list_pos_player_ini = []
         list_pos_goal_ini = []
-        fp = open("./stage_sample.txt", 'r')
+        fp = open(_path_file_stage, 'r')
         list_lines = fp.readlines()
         for line in list_lines:
             line = line.replace('\n', '')
@@ -174,6 +176,40 @@ class GameStage:
 
     def get_reward(self):
         return self.di
+
+    def get_state_around(self, _num_around=4):
+        tuple_state_around = ()
+        # index_x, index_y: 現在プレイヤーの中心が所属する格子点の番号
+        index_x = int(self.player.rect.center[0] / h.SIZE_IMAGE_UNIT)
+        index_y = int(self.player.rect.center[1] / h.SIZE_IMAGE_UNIT)
+
+        # 上下左右の座標
+        index_right = (index_x + 1, index_y)
+        index_left = (index_x - 1, index_y)
+        index_up = (index_x, index_y - 1)
+        index_down = (index_x, index_y + 1)
+
+        # 上下左右の状態
+        state_up = self._get_state_each(index_up)
+        state_right = self._get_state_each(index_right)
+        state_down = self._get_state_each(index_down)
+        state_left = self._get_state_each(index_left)
+
+        # 上下左右の状態を返す
+        if _num_around == 4:
+            tuple_state_around = (state_up, state_right, state_down, state_left)
+        return tuple_state_around
+
+    def _get_state_each(self, _index):
+        if -1 in _index:
+            state = 3
+        else:
+            state = self.list_info_stage[_index[1]][_index[0]]
+        return state
+
+    def try_function(self):
+        x = self.get_state_around()
+        print("x\n")
 
 
 class Player(pygame.sprite.Sprite):
