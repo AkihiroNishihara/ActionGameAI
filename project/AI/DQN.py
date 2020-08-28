@@ -1,4 +1,5 @@
 import gym
+import os
 import numpy as np
 import time
 from keras.models import Sequential
@@ -10,11 +11,12 @@ from gym import wrappers
 from keras import backend as K  # Kerasは自身で行列計算とかしない，それをするためのやーつ
 import tensorflow as tf
 import pygame
+from tqdm import tqdm
 from project import myenv, header as h
 
 LEARNING_RATE = 0.01
 SIZE_STATE = 4
-SIZE_ACTION = 2
+SIZE_ACTION = 8
 
 
 # 損失関数の定義(huber関数)
@@ -62,6 +64,7 @@ class QNetwork:
 
     def save_network(self, _name_network):
         string_json_model = self.model.to_json()
+        os.makedirs('./network', exist_ok=True)
         fp_model = open('./network/' + _name_network + '_model.json', 'w')
         fp_model.write(string_json_model)
         self.model.save_weights('./network/' + _name_network + '_weights.hdf5')
@@ -95,13 +98,18 @@ class Actor:
             list_return_target_Qs = _mainQN.model.predict(_state)[0]  # 各行動への報酬のリストを返す
             action = np.argmax(list_return_target_Qs)
         else:
-            action = np.random.choice([0, 1])
+            action = np.random.choice(list(range(0, SIZE_ACTION)))
 
-        return action
+        str_bin_action = format(action, 'b')
+        for i in range(3 - len(str_bin_action)):
+            str_bin_action = '0' + str_bin_action
+        list_bin_action = [int(c) for c in list(str_bin_action)]
+
+        return list_bin_action
 
 
 DQN_MODE = 1  # 1がDQN、0がDDQNです
-LENDER_MODE = 1  # 0は学習後も描画なし、1は学習終了後に描画する
+LENDER_MODE = 0  # 0は学習後も描画なし、1は学習終了後に描画する
 
 # メイン関数
 if __name__ == '__main__':
@@ -116,7 +124,7 @@ if __name__ == '__main__':
 
     num_episodes = 9  # 総試行回数
     max_number_of_steps = 200  # 1試行のstep数
-    goal_average_reward = 195  # この報酬を超えると学習終了
+    # goal_average_reward = 195  # この報酬を超えると学習終了
     num_consecutive_iterations = 10  # 学習完了評価の平均計算を行う試行回数
     total_reward_vec = np.zeros(num_consecutive_iterations)  # 各試行の報酬を格納
     gamma = 0.99  # 割引係数
@@ -136,41 +144,45 @@ if __name__ == '__main__':
     actor = Actor()
 
     # メインルーチン
-    for episode in range(num_episodes):
+    for episode in tqdm(range(num_episodes)):
         env.reset()
-        state, reward, is_finish, _ = env.step(env.action_space.sample())  # 行動a_tの実行による行動後の観測データ・報酬・ゲーム終了フラグ・詳細情報
+        state, reward, is_done, _ = env.step(env.action_space.sample())  # 行動a_tの実行による行動後の観測データ・報酬・ゲーム終了フラグ・詳細情報
         state = np.reshape(state, [1, 4])
         episode_reward = 0
 
         targetQN.model.set_weights(mainQN.model.get_weights())
 
-        for t in range(max_number_of_steps + 1):  # 1試行のループ
+        count = 0
+        while not is_done:  # 1試行のループ
+            print(str(count))
+            count += 1
             if (islearned == 1) and LENDER_MODE:  # 学習終了時にcart-pole描画
                 env.render()
                 time.sleep(0.1)
                 print(state[0, 0])
 
             action = actor.get_action(state, episode, mainQN)  # 時刻tでの行動を決定
-            next_state, reward, is_finish, info = env.step(action)  # 行動a_tの実行による行動後の観測データ・報酬・ゲーム終了フラグ・詳細情報
+            next_state, reward, is_done, info = env.step(action)  # 行動a_tの実行による行動後の観測データ・報酬・ゲーム終了フラグ・詳細情報
             next_state = np.reshape(next_state, [1, SIZE_STATE])
 
             # 報酬を設定し、与える
-            if is_finish:
+            if is_done:
                 next_state = np.zeros(state.shape)
-                # 195ステップまで立てていたか判定
-                if t < 195:
-                    reward = -1  #
-                else:
-                    reward = 1
-            else:
-                reward = 0
-
-            episode_reward += 1  # 合計報酬を更新
+            #     # 195ステップまで立てていたか判定
+            #     if t < 195:
+            #         reward = -1  #
+            #     else:
+            #         reward = 1
+            # else:
+            #     reward = 0
+            #
+            # episode_reward += 1  # 合計報酬を更新
+            episode_reward += reward
 
             memory.add((state, action, reward, next_state))  # memory update
             state = next_state  # state update
 
-            # learning and update the weifhts of Q-network
+            # learning and update the weights of Q-network
             if (memory.len() > batch_size) and not islearned:
                 mainQN.replay(memory, batch_size, gamma, targetQN)
 
@@ -178,26 +190,68 @@ if __name__ == '__main__':
                 targetQN.model.set_weights(mainQN.model.get_weights())
 
             # process in finishing one trial
-            if is_finish:
-                total_reward_vec = np.hstack((total_reward_vec[1:], episode_reward))  # record rewards
-                print(
-                    '{0} Episode finished after {1} time steps / mean {2}'.format(episode, t + 1,
-                                                                                  total_reward_vec.mean()))
+            if is_done:
+                # total_reward_vec = np.hstack((total_reward_vec[1:], episode_reward))  # record rewards
+                # print(
+                #     '{0} Episode finished after {1} time steps / mean {2}'.format(episode, t + 1,
+                #                                                                   total_reward_vec.mean()))
                 break
 
+        # for t in range(max_number_of_steps + 1):  # 1試行のループ
+        #     if (islearned == 1) and LENDER_MODE:  # 学習終了時にcart-pole描画
+        #         env.render()
+        #         time.sleep(0.1)
+        #         print(state[0, 0])
+        #
+        #     action = actor.get_action(state, episode, mainQN)  # 時刻tでの行動を決定
+        #     next_state, reward, is_done, info = env.step(action)  # 行動a_tの実行による行動後の観測データ・報酬・ゲーム終了フラグ・詳細情報
+        #     next_state = np.reshape(next_state, [1, SIZE_STATE])
+        #
+        #     # 報酬を設定し、与える
+        #     if is_done:
+        #         next_state = np.zeros(state.shape)
+        #     #     # 195ステップまで立てていたか判定
+        #     #     if t < 195:
+        #     #         reward = -1  #
+        #     #     else:
+        #     #         reward = 1
+        #     # else:
+        #     #     reward = 0
+        #     #
+        #     # episode_reward += 1  # 合計報酬を更新
+        #     episode_reward += reward
+        #
+        #     memory.add((state, action, reward, next_state))  # memory update
+        #     state = next_state  # state update
+        #
+        #     # learning and update the weights of Q-network
+        #     if (memory.len() > batch_size) and not islearned:
+        #         mainQN.replay(memory, batch_size, gamma, targetQN)
+        #
+        #     if DQN_MODE:
+        #         targetQN.model.set_weights(mainQN.model.get_weights())
+        #
+        #     # process in finishing one trial
+        #     if is_done:
+        #         total_reward_vec = np.hstack((total_reward_vec[1:], episode_reward))  # record rewards
+        #         print(
+        #             '{0} Episode finished after {1} time steps / mean {2}'.format(episode, t + 1,
+        #                                                                           total_reward_vec.mean()))
+        #         break
+
         # 複数試行の平均報酬で終了を判断
-        if total_reward_vec.mean() > goal_average_reward:
-            print('Episode {0} train agent successfully!'.format(episode))
-            islearned = 1
-            if isrender == 0:
-                isrender = 1
+        # if total_reward_vec.mean() > goal_average_reward:
+        #     print('Episode {0} train agent successfully!'.format(episode))
+        #     islearned = 1
+        #     if isrender == 0:
+        #         isrender = 1
+        #
+        # env = wrappers.Monitor(env, './movie/cartpoleDDQN')  # 動画保存する場合
+        # 10エピソードだけでどんな挙動になるのか見たかったら、以下のコメントを外す
+        # if episode > 10:
+        #     if isrender == 0:
+        #         env = wrappers.Monitor(env, './movie/cartpole-experiment-1')  # 動画保存する場合
+        #         isrender = 1
+        #     islearned = 1
 
-                # env = wrappers.Monitor(env, './movie/cartpoleDDQN')  # 動画保存する場合
-                # 10エピソードだけでどんな挙動になるのか見たかったら、以下のコメントを外す
-                # if episode > 10:
-                #     if isrender == 0:
-                #         env = wrappers.Monitor(env, './movie/cartpole-experiment-1')  # 動画保存する場合
-                #         isrender = 1
-                #     islearned = 1
-
-    json_string = mainQN.save_network('mainQN')
+    mainQN.save_network('mainQN')
