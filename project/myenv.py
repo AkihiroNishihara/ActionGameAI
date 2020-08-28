@@ -16,25 +16,28 @@ class MyEnv(gym.Env):
         super().__init__()
         self.path_file_stage = _path_file_stage
 
-        # action_space, observation_space, reward_range を設定する
-        # 行動空間：離散値（right, left, jumpの各キーのON,OFF）
+        '''
+        <override attribution>
+            action_space, observation_space, reward_range を設定する
+            行動空間：マルチバイナリ（right, left, jumpの各キーのON,OFF）
+            状態空間：離散値（0:無し, 1：ブロック, 2：ゴール, 3:壁），上右下左の4方向を観測
+            報酬の範囲：0以上
+        '''
         self.action_space = gym.spaces.MultiBinary(3)
-
-        # 状態空間：離散値（0:無し, 1：ブロック, 2：ゴール, 3:壁），上右下左の4方向を観測
         self.observation_space = gym.spaces.Discrete(4)
+        self.reward_range = (0.0, float('inf'))
 
-        # # 報酬の範囲
-        # self.reward_range = [0.0, inf)
-        self._reset(_screen)
+        self.screen = _screen
+        self.reset()
 
     # ---------------------------------------- function required -------------------------------------------------------
     # ゲームを呼び出すことで初期化
-    def _reset(self, _screen):
-        self.game_stage = mode_gamestage.GameStage(_screen_class_arg=_screen, _path_file_stage=self.path_file_stage,
+    def reset(self):
+        self.game_stage = mode_gamestage.GameStage(_screen_class_arg=self.screen, _path_file_stage=self.path_file_stage,
                                                    _is_training=True)
 
     # _actionは（right, left, jump）の各キーのON,OFFで獲得
-    def _step(self, _action):
+    def step(self, _action):
         self.game_stage.step_training(_action)
 
         # 状態，報酬，終了条件の取得
@@ -45,7 +48,7 @@ class MyEnv(gym.Env):
 
         return observation, reward, self.done, info
 
-    def _render(self, mode='human', close=False):
+    def render(self, mode='human', close=False):
         pass
         # human の場合はコンソールに出力。ansiの場合は StringIO を返す
         # outfile = io.StringIO() if mode == 'ansi' else sys.stdout
