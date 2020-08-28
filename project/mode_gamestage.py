@@ -142,9 +142,9 @@ class GameStage:
             self.time_elapsed = int((pygame.time.get_ticks() - self.time_start) / 1000)
         return TIME_STAGE - self.time_elapsed
 
-    def _update_sprite(self, _is_training=False):
+    def _update_sprite(self, _is_training=False, _input_action=()):
         # スプライトの更新
-        self.all.update(_is_training)
+        self.all.update(_is_training, _input_action)
 
     def _draw(self):
         # 背景描写
@@ -167,24 +167,30 @@ class GameStage:
             self.screen.blit(self.rect_gameclear.get_obj(), self.rect_gameover.get_pos())
             self.screen.blit(self.rect_ope.get_obj(), self.rect_ope.get_pos())
 
-    def _key_handler(self):
-        """キー入力処理"""
-        for event in pygame.event.get():
-            if event.type == QUIT:
-                h.operation_finish()
-            elif event.type == KEYDOWN and event.key == K_ESCAPE:
-                h.operation_finish()
+    # def _key_handler(self):
+    #     """キー入力処理"""
+    #     for event in pygame.event.get():
+    #         if event.type == QUIT:
+    #             h.operation_finish()
+    #         elif event.type == KEYDOWN and event.key == K_ESCAPE:
+    #             h.operation_finish()
 
     def _run_playing(self):
         clock = pygame.time.Clock()
         while self.is_loop:
-            clock.tick(60)
+            clock.tick(60)  # 60fps
             self._get_time_remain()
-            self._update_sprite()
+
+            # ユーザからのキー入力を受け取り，スプライトを更新
+            pressed_keys = pygame.key.get_pressed()
+            tuple_pressed_key = (pressed_keys[K_RIGHT], pressed_keys[K_LEFT], pressed_keys[K_SPACE])
+            self._update_sprite(_input_action=tuple_pressed_key)
+
+            # スプライトの描写
             self._draw()
             pygame.display.update()
 
-            # イベント獲得
+            # 強制終了のイベント獲得
             self.list_event = pygame.event.get()
             for event in self.list_event:
                 if event.type == QUIT:
@@ -193,15 +199,28 @@ class GameStage:
                     if event.key == K_ESCAPE:
                         h.operation_finish()
 
-            self.player.check_status(self.goal)
-            self.is_game_over = self._check_is_gameover(self.player)
-            if self.is_game_over:
-                self._process_gameover()
-            if not self.is_game_over:
-                self.is_game_clear = self.player.get_is_touch_goal()
-                if self.is_game_clear:
-                    self._process_gameclear()
-            self._key_handler()
+            # ゲームの状態判定
+            self._check_status()
+
+            # self.player.check_status(self.goal)
+            # self.is_game_over = self._check_is_gameover(self.player)
+            # if self.is_game_over:
+            #     self._process_gameover()
+            # if not self.is_game_over:
+            #     self.is_game_clear = self.player.get_is_touch_goal()
+            #     if self.is_game_clear:
+            #         self._process_gameclear()
+            # self._key_handler()
+
+    def _check_status(self):
+        self.player.update_status(self.goal)
+        self.is_game_over = self._check_is_gameover(self.player)
+        if self.is_game_over:
+            self._process_gameover()
+        if not self.is_game_over:
+            self.is_game_clear = self.player.get_is_touch_goal()
+            if self.is_game_clear:
+                self._process_gameclear()
 
     def get_mode_next(self):
         return self.mode_next
@@ -218,20 +237,23 @@ class GameStage:
             state = self.list_info_stage[_index[1]][_index[0]]
         return state
 
-    def step_training(self, _input_action):
+    def step_training(self, _input_act_agent):
         self._get_time_remain()
-        # エージェントからの入力を受け取る
-        self._update_sprite(_is_training=True)
 
-        self.player.check_status(self.goal)
-        self.is_game_over = self._check_is_gameover(self.player)
-        if self.is_game_over:
-            self._process_gameover()
-        if not self.is_game_over:
-            self.is_game_clear = self.player.get_is_touch_goal()
-            if self.is_game_clear:
-                self._process_gameclear()
-        self._key_handler()
+        # エージェントからの入力を受け取り，スプライトの更新
+        self._update_sprite(_is_training=True, _input_action=_input_act_agent)
+
+        # ゲームの状態判定
+        self._check_status()
+
+        # self.player.check_status(self.goal)
+        # self.is_game_over = self._check_is_gameover(self.player)
+        # if self.is_game_over:
+        #     self._process_gameover()
+        # if not self.is_game_over:
+        #     self.is_game_clear = self.player.get_is_touch_goal()
+        #     if self.is_game_clear:
+        #         self._process_gameclear()
 
     def get_state_around(self, _num_around=4):
         tuple_state_around = ()
@@ -283,16 +305,17 @@ class Player(pygame.sprite.Sprite):
         self.is_on_ground = False
         self.is_touch_goal = False
 
+    # スプライトの更新(Spriteクラスのoverride)
     def update(self, _is_training=False, _input_action=()):
-        """スプライトの更新"""
-        # キー入力取得
         if not self.is_on_ground and not self.is_touch_goal:
-            if _is_training:  # 学習時：エージェントからの入力を受け取る
-                self.action(_input_action)
-            else:  # プレイ時：ユーザからの入力を受け取る
-                pressed_keys = pygame.key.get_pressed()
-                tuple_pressed_key = (pressed_keys[K_RIGHT], pressed_keys[K_LEFT], pressed_keys[K_SPACE])
-                self.action(tuple_pressed_key)
+            self.action(_input_action)
+            # # 学習時：エージェントからの入力を受け取る
+            # if _is_training:
+            #     self.action(_input_action)
+            # else:  # プレイ時：ユーザからの入力を受け取る
+            #     pressed_keys = pygame.key.get_pressed()  # キー入力取得
+            #     tuple_pressed_key = (pressed_keys[K_RIGHT], pressed_keys[K_LEFT], pressed_keys[K_SPACE])
+            #     self.action(tuple_pressed_key)
 
     def _collision_x(self):
         """X方向の衝突判定処理"""
@@ -363,7 +386,8 @@ class Player(pygame.sprite.Sprite):
             self.fpy = h.SCREEN_HEIGHT - height
             self.fpvy = 0
 
-    def check_status(self, _goal):
+    # プレイヤーの現在位置からの状態判定（接地によるgame-over，ゴール接触によるgame-clear）
+    def update_status(self, _goal):
         if self.rect.bottom == h.SCREEN_HEIGHT:
             self.is_on_ground = True
         else:
