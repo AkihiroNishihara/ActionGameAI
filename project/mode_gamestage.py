@@ -17,7 +17,6 @@ class GameStage:
         self.is_loop = True
         self.is_game_over = False
         self.is_game_clear = False
-        self.dist = 1.0e14  # ゴールまでの距離（初期値）
         self.time_start = pygame.time.get_ticks()
         self.time_remain = TIME_STAGE
         self.time_elapsed = 0
@@ -288,7 +287,14 @@ class GameStage:
 
     # 報酬を設定して返す（正規化する）
     def get_reward(self):
-        return self.di
+        param_state_game = 0  # 0:continue, 1:clear, -1:gameover
+        if self.is_game_clear:
+            param_state_game = 1
+        elif self.is_game_over:
+            param_state_game = -1
+        dist = self.player.get_dist()
+        reward = self.time_remain * dist * 2 ** param_state_game
+        return reward
 
 
 class Player(pygame.sprite.Sprite):
@@ -302,6 +308,7 @@ class Player(pygame.sprite.Sprite):
         self.rect = self.image.get_rect()
         self.rect.x, self.rect.y = pos[0], pos[1]  # 座標設定
         self.blocks = blocks  # 衝突判定用
+        self.dist = 1.0e14  # ゴールまでの距離（初期値）
 
         # 浮動小数点の位置と速度
         self.fpx = float(self.rect.x)
@@ -402,8 +409,8 @@ class Player(pygame.sprite.Sprite):
         else:
             xy_player = np.array(self.rect.center)
             xy_goal = np.array(_goal.rect.center)
-            dist = np.linalg.norm(xy_player - xy_goal)
-            if dist <= h.SIZE_IMAGE_UNIT:
+            self.dist = np.linalg.norm(xy_player - xy_goal)
+            if self.dist <= h.SIZE_IMAGE_UNIT:
                 self.is_touch_goal = True
 
     def get_is_on_ground(self):
@@ -411,6 +418,9 @@ class Player(pygame.sprite.Sprite):
 
     def get_is_touch_goal(self):
         return self.is_touch_goal
+
+    def get_dist(self):
+        return self.dist
 
     # _tuple_pressed_key = (right, left, space)
     def action(self, _tuple_pressed_key):
