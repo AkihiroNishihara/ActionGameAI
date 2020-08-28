@@ -1,5 +1,5 @@
 import pygame
-from project import header as h
+from project.source import header as h
 
 
 class Rectangle:

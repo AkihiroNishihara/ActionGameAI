@@ -1,4 +1,3 @@
-import gym
 import os
 import numpy as np
 import time
@@ -7,12 +6,11 @@ from keras.layers import Dense
 from keras.optimizers import Adam
 from keras.utils import plot_model
 from collections import deque
-from gym import wrappers
 from keras import backend as K  # Kerasは自身で行列計算とかしない，それをするためのやーつ
 import tensorflow as tf
 import pygame
 from tqdm import tqdm
-from project import myenv, header as h
+from project.source import myenv, header as h
 
 LEARNING_RATE = 0.01
 SIZE_STATE = 4
@@ -64,10 +62,11 @@ class QNetwork:
 
     def save_network(self, _name_network):
         string_json_model = self.model.to_json()
-        os.makedirs('./network', exist_ok=True)
-        fp_model = open('./network/' + _name_network + '_model.json', 'w')
+        path_dirs = '../AI/network'
+        os.makedirs(path_dirs, exist_ok=True)
+        fp_model = open(path_dirs + '/' + _name_network + '_model.json', 'w')
         fp_model.write(string_json_model)
-        self.model.save_weights('./network/' + _name_network + '_weights.hdf5')
+        self.model.save_weights(path_dirs + '/' + _name_network + '_weights.hdf5')
 
 
 # Experience replay と fixed target Q-networkを実現するためのメモリクラス
@@ -139,7 +138,7 @@ if __name__ == '__main__':
     # ネットワーク・メモリ・Actorの生成
     mainQN = QNetwork(_hidden_size=hidden_size, _learning_rate=learning_rate)
     targetQN = QNetwork(_hidden_size=hidden_size, _learning_rate=learning_rate)
-    plot_model(mainQN.model, to_file='Qnetwork.png', show_shapes=True)  # Qネットワークの可視化
+    plot_model(mainQN.model, to_file='../AI/Qnetwork.png', show_shapes=True)  # Qネットワークの可視化
     memory = Memory(_max_size=memory_size)
     actor = Actor()
 

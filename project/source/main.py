@@ -1,7 +1,7 @@
 # coding:utf-8
 import pygame
 import os
-from project import header as h, mode_start, mode_gamestage, mode_under_dev
+from project.source import mode_gamestage, header as h, mode_start, mode_under_dev
 
 # START, STAGE, END
 mode_initial = "START"

@@ -1,11 +1,7 @@
-import sys
-
 import gym
 import gym.spaces
-import io
-import pygame
 
-from project import mode_gamestage
+from project.source import mode_gamestage
 
 
 class MyEnv(gym.Env):

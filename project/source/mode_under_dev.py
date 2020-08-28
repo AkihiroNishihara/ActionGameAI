@@ -1,6 +1,6 @@
 import pygame
 from pygame.locals import *
-from project import class_generate_rect, header as h
+from project.source import header as h, class_generate_rect
 
 
 class UnderDevelopment:

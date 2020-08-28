@@ -2,8 +2,7 @@ import pygame
 from pygame.locals import *
 import itertools
 import numpy as np
-from project import header as h
-from project import class_generate_rect
+from project.source import header as h, class_generate_rect
 
 TIME_STAGE = 100
 DIST_BASE_MOVE = 10
