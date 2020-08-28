@@ -38,10 +38,10 @@ class GameStage:
         self.rect_ope.update_pos_rect(0, 100)
 
         # 画像のロード
-        Player.left_image = pygame.image.load("./image/player.png").convert_alpha()  # 左向き
+        Player.left_image = pygame.image.load("../image/player.png").convert_alpha()  # 左向き
         Player.right_image = pygame.transform.flip(Player.left_image, 1, 0)  # 右向き
-        Block.image = pygame.image.load("./image/brick.png").convert_alpha()
-        Goal.image = pygame.image.load("./image/goal.png").convert_alpha()
+        Block.image = pygame.image.load("../image/brick.png").convert_alpha()
+        Goal.image = pygame.image.load("../image/goal.png").convert_alpha()
 
         # スプライトグループの作成
         self.all = pygame.sprite.RenderUpdates()
@@ -285,7 +285,7 @@ class GameStage:
             tuple_state_around = (state_up, state_right, state_down, state_left)
         return tuple_state_around
 
-    # 報酬を設定して返す（正規化する）
+    # 報酬を設定して返す
     def get_reward(self):
         param_state_game = 0  # 0:continue, 1:clear, -1:gameover
         if self.is_game_clear:
@@ -295,6 +295,13 @@ class GameStage:
         dist = self.player.get_dist()
         reward = self.time_remain * dist * 2 ** param_state_game
         return reward
+
+    # 終了状態か否かを返す
+    def get_is_done(self):
+        is_done = False
+        if self.is_game_over or self.is_game_clear:
+            is_done = True
+        return is_done
 
 
 class Player(pygame.sprite.Sprite):
