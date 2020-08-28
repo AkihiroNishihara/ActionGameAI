@@ -17,6 +17,7 @@ class GameStage:
         self.is_loop = True
         self.is_game_over = False
         self.is_game_clear = False
+        self.is_training =_is_training
         self.time_start = pygame.time.get_ticks()
         self.time_remain = TIME_STAGE
         self.time_elapsed = 0
@@ -222,12 +223,15 @@ class GameStage:
     def _check_status(self):
         self.player.update_status(self.goal)
         self.is_game_over = self._check_is_gameover(self.player)
-        if self.is_game_over:
-            self._process_gameover()
-        if not self.is_game_over:
-            self.is_game_clear = self.player.get_is_touch_goal()
-            if self.is_game_clear:
-                self._process_gameclear()
+
+        # プレイヤー操作時の処理
+        if not self.is_training:
+            if self.is_game_over:
+                self._process_gameover()
+            if not self.is_game_over:
+                self.is_game_clear = self.player.get_is_touch_goal()
+                if self.is_game_clear:
+                    self._process_gameclear()
 
     def get_mode_next(self):
         return self.mode_next
@@ -238,7 +242,14 @@ class GameStage:
 
     # ---------------------------------------- function for DQN --------------------------------------------------------
     def _get_state_each(self, _index):
-        if -1 in _index:
+        is_state_wall = False
+
+        if _index[0] < 0 or int(h.SCREEN_WIDTH / h.SIZE_IMAGE_UNIT) <= _index[0]:
+            is_state_wall = True
+        elif _index[1] < 0 or int(h.SCREEN_HEIGHT / h.SIZE_IMAGE_UNIT) <= _index[1]:
+            is_state_wall = True
+
+        if is_state_wall:
             state = 3
         else:
             state = self.list_info_stage[_index[1]][_index[0]]
