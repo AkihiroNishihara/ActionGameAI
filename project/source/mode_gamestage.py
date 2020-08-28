@@ -4,7 +4,8 @@ import itertools
 import numpy as np
 from project.source import header as h, class_generate_rect
 
-TIME_STAGE = 100
+TIME_STAGE = 10
+PARAM_ACCEL = 10
 DIST_BASE_MOVE = 10
 SCREEN = Rect(0, 0, h.SCREEN_WIDTH, h.SCREEN_HEIGHT)
 
@@ -16,7 +17,7 @@ class GameStage:
         self.is_loop = True
         self.is_game_over = False
         self.is_game_clear = False
-        self.is_training =_is_training
+        self.is_training = _is_training
         self.time_start = pygame.time.get_ticks()
         self.time_remain = TIME_STAGE
         self.time_elapsed = 0
@@ -303,7 +304,7 @@ class GameStage:
         elif self.is_game_over:
             param_state_game = -1
         dist = self.player.get_dist()
-        reward = self.time_remain * dist * 2 ** param_state_game
+        reward = (self.time_remain + 0.001) * dist * 2 ** param_state_game
         return reward
 
     # 終了状態か否かを返す

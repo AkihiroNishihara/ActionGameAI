@@ -60,13 +60,11 @@ class QNetwork:
 
         self.model.fit(inputs, targets, epochs=1, verbose=0)
 
-    def save_network(self, _name_network):
+    def save_network(self, _path_dir, _name_network):
         string_json_model = self.model.to_json()
-        path_dirs = '../AI/network'
-        os.makedirs(path_dirs, exist_ok=True)
-        fp_model = open(path_dirs + '/' + _name_network + '_model.json', 'w')
+        fp_model = open(_path_dir + '/' + _name_network + '_model.json', 'w')
         fp_model.write(string_json_model)
-        self.model.save_weights(path_dirs + '/' + _name_network + '_weights.hdf5')
+        self.model.save_weights(_path_dir + '/' + _name_network + '_weights.hdf5')
 
 
 # Experience replay と fixed target Q-networkを実現するためのメモリクラス
@@ -119,7 +117,7 @@ if __name__ == '__main__':
     pygame.init()
     pygame.display.set_caption("Action Game AI")
     screen = pygame.display.set_mode((h.SCREEN_WIDTH, h.SCREEN_HEIGHT))
-    env = myenv.MyEnv(_path_file_stage='../stage_sample.txt', _screen=screen)
+    env = myenv.MyEnv(_path_file_stage='./stage_sample.txt', _screen=screen)
 
     num_episodes = 9  # 総試行回数
     max_number_of_steps = 200  # 1試行のstep数
@@ -138,12 +136,11 @@ if __name__ == '__main__':
     # ネットワーク・メモリ・Actorの生成
     mainQN = QNetwork(_hidden_size=hidden_size, _learning_rate=learning_rate)
     targetQN = QNetwork(_hidden_size=hidden_size, _learning_rate=learning_rate)
-    plot_model(mainQN.model, to_file='../AI/Qnetwork.png', show_shapes=True)  # Qネットワークの可視化
     memory = Memory(_max_size=memory_size)
     actor = Actor()
 
     # メインルーチン
-    for episode in tqdm(range(num_episodes)):
+    for episode in range(num_episodes):
         env.reset()
         state, reward, is_done, _ = env.step(env.action_space.sample())  # 行動a_tの実行による行動後の観測データ・報酬・ゲーム終了フラグ・詳細情報
         state = np.reshape(state, [1, 4])
@@ -152,9 +149,10 @@ if __name__ == '__main__':
         targetQN.model.set_weights(mainQN.model.get_weights())
 
         count = 0
-        while not is_done:  # 1試行のループ
-            print(str(count))
-            count += 1
+        # 1試行のループ
+        while not is_done:
+            # print(str(count))
+            # count += 1
             if (islearned == 1) and LENDER_MODE:  # 学習終了時にcart-pole描画
                 env.render()
                 time.sleep(0.1)
@@ -167,22 +165,14 @@ if __name__ == '__main__':
             # 報酬を設定し、与える
             if is_done:
                 next_state = np.zeros(state.shape)
-            #     # 195ステップまで立てていたか判定
-            #     if t < 195:
-            #         reward = -1  #
-            #     else:
-            #         reward = 1
-            # else:
-            #     reward = 0
-            #
-            # episode_reward += 1  # 合計報酬を更新
+
             episode_reward += reward
 
             memory.add((state, action, reward, next_state))  # memory update
             state = next_state  # state update
 
             # learning and update the weights of Q-network
-            if (memory.len() > batch_size) and not islearned:
+            if (memory.len() > batch_size) and not is_done:
                 mainQN.replay(memory, batch_size, gamma, targetQN)
 
             if DQN_MODE:
@@ -190,11 +180,9 @@ if __name__ == '__main__':
 
             # process in finishing one trial
             if is_done:
-                # total_reward_vec = np.hstack((total_reward_vec[1:], episode_reward))  # record rewards
-                # print(
-                #     '{0} Episode finished after {1} time steps / mean {2}'.format(episode, t + 1,
-                #                                                                   total_reward_vec.mean()))
                 break
+
+        print(reward)
 
         # for t in range(max_number_of_steps + 1):  # 1試行のループ
         #     if (islearned == 1) and LENDER_MODE:  # 学習終了時にcart-pole描画
@@ -253,4 +241,7 @@ if __name__ == '__main__':
         #         isrender = 1
         #     islearned = 1
 
-    mainQN.save_network('mainQN')
+    path_dirs = '../network'
+    os.makedirs(path_dirs, exist_ok=True)
+    mainQN.save_network(_path_dir=path_dirs, _name_network='mainQN')
+    plot_model(mainQN.model, to_file=path_dirs + '/Qnetwork.png', show_shapes=True)  # Qネットワークの可視化
