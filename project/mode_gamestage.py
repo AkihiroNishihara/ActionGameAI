@@ -7,6 +7,7 @@ from project import class_generate_rect
 
 TIME_STAGE = 100
 DIST_BASE_MOVE = 10
+SCREEN = Rect(0, 0, h.SCREEN_WIDTH, h.SCREEN_HEIGHT)
 
 
 class GameStage:
@@ -57,6 +58,12 @@ class GameStage:
 
         # メインループ
         if not _is_training:
+            # 背景描写
+            self.bg = pygame.Surface(SCREEN.size)
+            self.bg.fill((200, 255, 255))
+            self.screen.blit(self.bg, (0, 0))
+            pygame.display.update()
+
             self._run_playing()
 
         # clock = pygame.time.Clock()
@@ -137,27 +144,27 @@ class GameStage:
             if self.list_info_stage[i][j] == 1:
                 Block(self._get_pos_topleft([i, j]))
 
-    def _get_time_remain(self):
+    def _update_time_remain(self):
         if not self.is_game_over and not self.is_game_clear:
             self.time_elapsed = int((pygame.time.get_ticks() - self.time_start) / 1000)
-        return TIME_STAGE - self.time_elapsed
+            self.time_remain = TIME_STAGE - self.time_elapsed
 
     def _update_sprite(self, _is_training=False, _input_action=()):
         # スプライトの更新
         self.all.update(_is_training, _input_action)
 
-    def _draw(self):
-        # 背景描写
-        self.screen.fill((200, 255, 255))
+    def _update_display(self):
+        # 背景の描写
+        self.all.clear(self.screen, self.bg)
         pygame.draw.rect(self.screen, (200, 200, 200), Rect(0, 0, h.SCREEN_WIDTH, h.SIZE_IMAGE_UNIT))  # 画面上部の四角形の描写
 
         # 経過時間の描写
-        self.time_remain = self._get_time_remain()
+        self._update_time_remain()
         text_time_remain = self.font.render(str(max(0, self.time_remain)), True, (255, 0, 0))  # テキストの作成
         self.screen.blit(text_time_remain, [0, 0])
 
-        """スプライトの描画"""
-        self.all.draw(self.screen)
+        # 更新されたスプライトの取得
+        dirty_rect = self.all.draw(self.screen)
 
         if self.is_game_over:
             self.screen.blit(self.rect_gameover.get_obj(), self.rect_gameover.get_pos())
@@ -166,6 +173,8 @@ class GameStage:
         if self.is_game_clear:
             self.screen.blit(self.rect_gameclear.get_obj(), self.rect_gameover.get_pos())
             self.screen.blit(self.rect_ope.get_obj(), self.rect_ope.get_pos())
+
+        pygame.display.update()
 
     # def _key_handler(self):
     #     """キー入力処理"""
@@ -179,16 +188,15 @@ class GameStage:
         clock = pygame.time.Clock()
         while self.is_loop:
             clock.tick(60)  # 60fps
-            self._get_time_remain()
+            self._update_time_remain()
 
             # ユーザからのキー入力を受け取り，スプライトを更新
             pressed_keys = pygame.key.get_pressed()
             tuple_pressed_key = (pressed_keys[K_RIGHT], pressed_keys[K_LEFT], pressed_keys[K_SPACE])
             self._update_sprite(_input_action=tuple_pressed_key)
 
-            # スプライトの描写
-            self._draw()
-            pygame.display.update()
+            # 画面の更新
+            self._update_display()
 
             # 強制終了のイベント獲得
             self.list_event = pygame.event.get()
@@ -238,7 +246,7 @@ class GameStage:
         return state
 
     def step_training(self, _input_act_agent):
-        self._get_time_remain()
+        self._update_time_remain()
 
         # エージェントからの入力を受け取り，スプライトの更新
         self._update_sprite(_is_training=True, _input_action=_input_act_agent)
@@ -278,6 +286,7 @@ class GameStage:
             tuple_state_around = (state_up, state_right, state_down, state_left)
         return tuple_state_around
 
+    # 報酬を設定して返す（正規化する）
     def get_reward(self):
         return self.di
 

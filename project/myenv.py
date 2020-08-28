@@ -14,27 +14,24 @@ class MyEnv(gym.Env):
 
     def __init__(self, _path_file_stage):
         super().__init__()
+        self.path_file_stage = _path_file_stage
         # action_space, observation_space, reward_range を設定する
-        # 行動空間：離散値（right, left, jumpの各キーのON,OFFより計7）
-        self.action_space = gym.spaces.Discrete(7)
+        # 行動空間：離散値（right, left, jumpの各キーのON,OFF）
+        self.action_space = gym.spaces.MultiBinary(3)
         # 状態空間：離散値（0:無し, 1：ブロック, 2：ゴール, 3:壁），上右下左の4方向を観測
-        self.state_space = gym.spaces.Box(
-            low=0,
-            high=3,
-            shape=(4, 1)
-        )
+        self.observation_space = gym.spaces.Discrete(4)
         # 報酬の範囲（正規化する）
         self.reward_range = [0.0, 1.0]
-        self.game_stage = mode_gamestage.GameStage(_path_file_stage, _is_training=True)
         self._reset()
 
     # ---------------------------------------- function required -------------------------------------------------------
-    # ゲームを呼び出すことで初期化するから実質不要？
+    # ゲームを呼び出すことで初期化
     def _reset(self):
-        return 1
+        self.game_stage = mode_gamestage.GameStage(self.path_file_stage, _is_training=True)
 
     # _actionは（right, left, jump）の各キーのON,OFFで獲得
     def _step(self, _action):
+        self.game_stage.step_training(_action)
         # 1ステップ進める処理を記述。戻り値は observation, reward, done(ゲーム終了したか), info(追加の情報の辞書)
         if _action == 0:
             next_pos = self.pos + [0, 1]
