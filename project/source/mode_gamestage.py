@@ -4,7 +4,7 @@ import itertools
 import numpy as np
 from project.source import header as h, class_generate_rect
 
-TIME_STAGE = 10
+TIME_STAGE = 30
 PARAM_ACCEL = 10
 DIST_BASE_MOVE = 10
 SCREEN = Rect(0, 0, h.SCREEN_WIDTH, h.SCREEN_HEIGHT)
@@ -53,7 +53,7 @@ class GameStage:
 
         # 各スプライトの生成
         self._create_blocks()
-        self.player = Player(self._get_pos_topleft(_list_pos_player_ini), self.blocks)
+        self.player = Player(self._get_pos_topleft(_list_pos_player_ini), self.blocks, _is_training=self.is_training)
         self.goal = Goal(self._get_pos_topleft(_list_pos_goal_ini))
 
         # メインループ
@@ -146,7 +146,10 @@ class GameStage:
 
     def _update_time_remain(self):
         if not self.is_game_over and not self.is_game_clear:
-            self.time_elapsed = int((pygame.time.get_ticks() - self.time_start) / 1000)
+            param_time_accel = 1
+            if self.is_training:
+                param_time_accel = PARAM_ACCEL
+            self.time_elapsed = param_time_accel * int((pygame.time.get_ticks() - self.time_start) / 1000)
             self.time_remain = TIME_STAGE - self.time_elapsed
 
     def _update_sprite(self, _is_training=False, _input_action=()):
@@ -304,7 +307,7 @@ class GameStage:
         elif self.is_game_over:
             param_state_game = -1
         dist = self.player.get_dist()
-        reward = (self.time_remain + 0.001) * dist * 2 ** param_state_game
+        reward = (self.time_remain + 0.001) * dist * 10 ** param_state_game
         return reward
 
     # 終了状態か否かを返す
@@ -320,7 +323,7 @@ class Player(pygame.sprite.Sprite):
     JUMP_SPEED = 6.0  # ジャンプの初速度
     GRAVITY = 0.2  # 重力加速度
 
-    def __init__(self, pos, blocks):
+    def __init__(self, pos, blocks, _is_training=False):
         pygame.sprite.Sprite.__init__(self, self.containers)
         self.image = self.right_image
         self.rect = self.image.get_rect()
@@ -339,17 +342,14 @@ class Player(pygame.sprite.Sprite):
         self.is_on_ground = False
         self.is_touch_goal = False
 
+        self.coef_speed = 1
+        if _is_training:
+            self.coef_speed = PARAM_ACCEL
+
     # スプライトの更新(Spriteクラスのoverride)
     def update(self, _is_training=False, _input_action=()):
         if not self.is_on_ground and not self.is_touch_goal:
             self.action(_input_action)
-            # # 学習時：エージェントからの入力を受け取る
-            # if _is_training:
-            #     self.action(_input_action)
-            # else:  # プレイ時：ユーザからの入力を受け取る
-            #     pressed_keys = pygame.key.get_pressed()  # キー入力取得
-            #     tuple_pressed_key = (pressed_keys[K_RIGHT], pressed_keys[K_LEFT], pressed_keys[K_SPACE])
-            #     self.action(tuple_pressed_key)
 
     def _collision_x(self):
         """X方向の衝突判定処理"""
@@ -444,22 +444,22 @@ class Player(pygame.sprite.Sprite):
     def action(self, _tuple_pressed_key):
         if _tuple_pressed_key[0]:
             self.image = self.right_image
-            self.fpvx = self.MOVE_SPEED
+            self.fpvx = self.MOVE_SPEED * self.coef_speed
         elif _tuple_pressed_key[1]:
             self.image = self.left_image
-            self.fpvx = -self.MOVE_SPEED
+            self.fpvx = -self.MOVE_SPEED * self.coef_speed
         else:
             self.fpvx = 0.0
 
         # ジャンプ
         if _tuple_pressed_key[2]:
             if self.is_on_block:
-                self.fpvy = - self.JUMP_SPEED  # 上向きに初速度を与える
+                self.fpvy = - self.JUMP_SPEED * self.coef_speed  # 上向きに初速度を与える
                 self.is_on_block = False
 
         # 速度を更新
         if not self.is_on_block:
-            self.fpvy += self.GRAVITY  # 下向きに重力をかける
+            self.fpvy += self.GRAVITY * self.coef_speed  # 下向きに重力をかける
 
         # X方向の衝突判定処理
         self._collision_x()
