@@ -37,12 +37,13 @@ class MyEnv(gym.Env):
         self.game_stage.step_training(_action)
 
         # 状態，報酬，終了条件の取得
-        observation = self.game_stage.get_state_around()
+        observation = self.game_stage.get_observation_around()
         reward = self.game_stage.get_reward
-        self.done = self.game_stage.get_is_done()
-        info = {}
+        is_done = self.game_stage.get_is_done()
+        info = {'GAMEOVER': self.game_stage.is_game_over, 'CLEAR': self.game_stage.is_game_clear,
+                'TIME': self.game_stage.time_remain}
 
-        return observation, reward, self.done, info
+        return observation, reward, is_done, info
 
     def render(self, mode='human', close=False):
         pass

@@ -21,7 +21,12 @@ class ActionGame:
                 mode_current = mode_start.Start(_screen)
                 self.MODE, actor = mode_current.get_mode_next()
             elif self.MODE is "STAGE":
-                mode_current = mode_gamestage.GameStage(_screen, "./stage_sample.txt", _actor=actor)
+                if actor is 'USER':
+                    mode_current = mode_gamestage.GameStage(_screen, "./stage_sample.txt", _actor=actor)
+                elif actor is 'AI_MAIN':
+                    mode_current = mode_gamestage.GameStage(_screen, "./stage_sample.txt", _actor=actor)
+                elif actor is 'AI_SUB':
+                    mode_current = mode_gamestage.GameStage(_screen, "./stage_sub1.txt", _actor=actor)
                 self.MODE = mode_current.get_mode_next()
             elif self.MODE is "END":
                 mode_current = mode_under_dev.UnderDevelopment(_screen)

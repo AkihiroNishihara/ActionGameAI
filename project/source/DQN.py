@@ -1,8 +1,11 @@
 import os
 import numpy as np
 import time
+import datetime
+import math
+import sys
 from keras.models import Sequential
-from keras.layers import Dense
+from keras.layers import Dense, Conv2D, Input, Flatten
 from keras.optimizers import Adam
 from keras.utils import plot_model
 from collections import deque
@@ -11,10 +14,15 @@ import tensorflow as tf
 import pygame
 from tqdm import tqdm
 from project.source import myenv, header as h
+import random as rn
 
 LEARNING_RATE = 0.01
-SIZE_STATE = 4
+SIZE_STATE = 27  # 8方向+ボックス内の座標
 SIZE_ACTION = 8
+SIZE_HIDDEN = 32
+SEED = 1
+NUM_EPISODES = 19  # 総試行回数
+SIZE_LOOP = 200
 
 
 # 損失関数の定義(huber関数)
@@ -34,9 +42,16 @@ class QNetwork:
         self.model = Sequential()
         self.model.add(Dense(_hidden_size, activation='relu', input_dim=_state_size))
         self.model.add(Dense(_hidden_size, activation='relu'))
+        self.model.add(Dense(_hidden_size, activation='relu'))
+        self.model.add(Dense(_hidden_size, activation='relu'))
         self.model.add(Dense(_action_size, activation='linear'))
         self.optimizer = Adam(lr=_learning_rate)
         self.model.compile(loss=huberloss, optimizer=self.optimizer)
+        # input = Input(shape=(1, _state_size))
+        # self.model = Dense(_hidden_size, activation='relu')(Flatten(input))
+        # self.model = Dense(_action_size, activation='linear')(self.model)
+        # self.optimizer = Adam(lr=_learning_rate)
+        # self.model.compile(loss=huberloss, optimizer=self.optimizer)
 
     # 重みの学習 _memoryには（state, action, reward, next_state）群が格納
     def replay(self, _memory, _batch_size, _gamma, _targetQN):
@@ -56,7 +71,8 @@ class QNetwork:
                 target = reward_b + _gamma * _targetQN.model.predict(next_state_b)[0][next_action]
 
             targets[i] = self.model.predict(state_b)  # Qネットワークの出力
-            targets[i][action_b] = target  # 教師信号
+            int_action_b = 1 * action_b['right'] + 2 * action_b['left'] + 4 * action_b['space']
+            targets[i][int_action_b] = target  # 教師信号
 
         self.model.fit(inputs, targets, epochs=1, verbose=0)
 
@@ -90,22 +106,36 @@ class Actor:
     def get_action(self, _state, _episode, _mainQN):
         # 徐々に最適な行動をとるΕ-greedy法
         # Eが徐々に小さくなることで，最適行動をとる確率が高まる．
-        epsilon = 0.001 + 0.9 / (1.0 + _episode)
+        # epsilon = 0.001 + 0.9 / (1.0 + _episode)
+        epsilon = 1.0 - (_episode / NUM_EPISODES)
         if epsilon <= np.random.uniform(0, 1):
             list_return_target_Qs = _mainQN.model.predict(_state)[0]  # 各行動への報酬のリストを返す
             action = np.argmax(list_return_target_Qs)
         else:
             action = np.random.choice(list(range(0, SIZE_ACTION)))
 
-        str_bin_action = format(action, 'b')
-        for i in range(3 - len(str_bin_action)):
-            str_bin_action = '0' + str_bin_action
-        list_bin_action = [int(c) for c in list(str_bin_action)]
-
-        return list_bin_action
+        dict_action = get_dict_action(action)
+        return dict_action
 
 
-DQN_MODE = 1  # 1がDQN、0がDDQNです
+def get_dict_action(_int_act):
+    if _int_act not in range(0, SIZE_ACTION):
+        print('Error: _int_act in get_list_bin_action is out of range', file=sys.stderr)
+        os.system('PAUSE')
+        exit(-1)
+    # actoin をバイナリの文字列で表現
+    str_bin_action = format(_int_act, 'b')
+    for i in range(int(math.log2(SIZE_ACTION)) - len(str_bin_action)):
+        str_bin_action = '0' + str_bin_action
+    list_str_bin_action = list(str_bin_action)
+    key_right = int(list_str_bin_action[2])
+    key_left = int(list_str_bin_action[1])
+    key_space = int(list_str_bin_action[0])
+    dict_pressed_key = {'right': key_right, 'left': key_left, 'space': key_space}
+    return dict_pressed_key
+
+
+DQN_MODE = 0  # 1がDQN、0がDDQNです
 LENDER_MODE = 0  # 0は学習後も描画なし、1は学習終了後に描画する
 
 # メイン関数
@@ -114,75 +144,152 @@ if __name__ == '__main__':
     # env = wrappers.Monitor(env, './movie/cartpoleDDQN', video_callable=(lambda ep: ep % 100 == 0))  # 動画保存する場合
 
     # original environment
+    os.environ['PYTHONHASHSEED'] = str(SEED)
+    np.random.seed(SEED)
+    tf.random.set_seed(SEED)
+    # rn.seed(SEED)
     pygame.init()
     pygame.display.set_caption("Action Game AI")
     screen = pygame.display.set_mode((h.SCREEN_WIDTH, h.SCREEN_HEIGHT))
+    screen_sub1 = pygame.display.set_mode((h.SCREEN_WIDTH, h.SCREEN_HEIGHT))
+    screen_sub2 = pygame.display.set_mode((h.SCREEN_WIDTH, h.SCREEN_HEIGHT))
     env = myenv.MyEnv(_path_file_stage='./stage_sample.txt', _screen=screen)
+    env_sub1 = myenv.MyEnv(_path_file_stage='./stage_sub1.txt', _screen=screen_sub1)
+    env_sub2 = myenv.MyEnv(_path_file_stage='./stage_sub2.txt', _screen=screen_sub2)
 
-    num_episodes = 9  # 総試行回数
-    max_number_of_steps = 200  # 1試行のstep数
-    # goal_average_reward = 195  # この報酬を超えると学習終了
     num_consecutive_iterations = 10  # 学習完了評価の平均計算を行う試行回数
     total_reward_vec = np.zeros(num_consecutive_iterations)  # 各試行の報酬を格納
     gamma = 0.99  # 割引係数
     islearned = 0  # 学習が終わったフラグ
     isrender = 0  # 描画フラグ
     # ---
-    hidden_size = 16  # Q-networkの隠れ層のニューロンの数
-    learning_rate = 0.00001  # Q-networkの学習係数
-    memory_size = 10000  # バッファーメモリの大きさ
+    # learning_rate = 0.00001  # Q-networkの学習係数
+    learning_rate = 0.01  # Q-networkの学習係数
+    # memory_size = 10000  # バッファーメモリの大きさ
+    memory_size = 1000  # バッファーメモリの大きさ
     batch_size = 32  # Q-networkを更新するバッチの大記載
 
     # ネットワーク・メモリ・Actorの生成
-    mainQN = QNetwork(_hidden_size=hidden_size, _learning_rate=learning_rate)
-    targetQN = QNetwork(_hidden_size=hidden_size, _learning_rate=learning_rate)
+    mainQN = QNetwork(_hidden_size=SIZE_HIDDEN, _learning_rate=learning_rate)
+    targetQN = QNetwork(_hidden_size=SIZE_HIDDEN, _learning_rate=learning_rate)
     memory = Memory(_max_size=memory_size)
     actor = Actor()
 
     # メインルーチン
-    for episode in range(num_episodes):
+    for episode in range(NUM_EPISODES):
         env.reset()
-        state, reward, is_done, _ = env.step(env.action_space.sample())  # 行動a_tの実行による行動後の観測データ・報酬・ゲーム終了フラグ・詳細情報
-        state = np.reshape(state, [1, 4])
-        episode_reward = 0
+        act_ini = env.action_space.sample()
+        action = {'right': act_ini[0], 'left': act_ini[1], 'space': act_ini[2]}
+        state, reward, is_done, _ = env.step(action)  # 行動a_tの実行による行動後の観測データ・報酬・ゲーム終了フラグ・詳細情報
+        state = np.reshape(state, [1, SIZE_STATE])
+
+        env_sub1.reset()
+        state_sub1, reward_sub1, is_done_sub1, _ = env_sub1.step(action)  # 行動a_tの実行による行動後の観測データ・報酬・ゲーム終了フラグ・詳細情報
+        state_sub1 = np.reshape(state_sub1, [1, SIZE_STATE])
+        env_sub2.reset()
+        state_sub2, reward_sub2, is_done_sub2, _ = env_sub2.step(action)  # 行動a_tの実行による行動後の観測データ・報酬・ゲーム終了フラグ・詳細情報
+        state_sub2 = np.reshape(state_sub2, [1, SIZE_STATE])
 
         targetQN.model.set_weights(mainQN.model.get_weights())
 
-        count = 0
         # 1試行のループ
+        list_reward = []
+        count_loop = 0
+        is_train_sub1 = False
+        is_train_sub2 = False
+        # for count_loop in range(SIZE_LOOP):
+        # print(str(count))
         while not is_done:
-            # print(str(count))
-            # count += 1
-            if (islearned == 1) and LENDER_MODE:  # 学習終了時にcart-pole描画
-                env.render()
-                time.sleep(0.1)
-                print(state[0, 0])
+            count_loop += 1
+            # if (islearned == 1) and LENDER_MODE:  # 学習終了時にcart-pole描画
+            #     env.render()
+            #     time.sleep(0.1)
+            #     print(state[0, 0])
 
             action = actor.get_action(state, episode, mainQN)  # 時刻tでの行動を決定
-            next_state, reward, is_done, info = env.step(action)  # 行動a_tの実行による行動後の観測データ・報酬・ゲーム終了フラグ・詳細情報
+            if count_loop % 20 == 0:
+                print(action)
+
+            # (メインゲーム)行動a_tの実行による行動後の観測データ・報酬・ゲーム終了フラグ・詳細情報
+            next_state, reward, is_done, info = env.step(action)
             next_state = np.reshape(next_state, [1, SIZE_STATE])
-
-            # 報酬を設定し、与える
-            if is_done:
-                next_state = np.zeros(state.shape)
-
-            episode_reward += reward
-
             memory.add((state, action, reward, next_state))  # memory update
             state = next_state  # state update
+            list_reward.append(reward)
 
-            # learning and update the weights of Q-network
+            # 終了判定
+            if is_done:
+                if info['GAMEOVER']:
+                    if info['TIME'] == 0:
+                        print('MAIN {0}/{1}: TIME OVER'.format(episode + 1, NUM_EPISODES))
+                    else:
+                        print('MAIN {0}/{1}: FALL GROUND'.format(episode + 1, NUM_EPISODES))
+                elif info['CLEAR']:
+                    print('MAIN {0}/{1}: CLEAR!'.format(episode + 1, NUM_EPISODES))
+                else:
+                    print('Error: Wrong information of main stage', file=sys.stderr)
+                    os.system('PAUSE')
+                    exit(-1)
+                next_state = np.zeros(state.shape)
+                next_state_sub1 = np.zeros(state_sub1.shape)
+                next_state_sub2 = np.zeros(state_sub2.shape)
+                break
+
+            if is_train_sub1:
+                action_sub1 = actor.get_action(state_sub1, episode, mainQN)  # 時刻tでの行動を決定
+                # (サブゲーム)行動a_tの実行による行動後の観測データ・報酬・ゲーム終了フラグ・詳細情報
+                next_state_sub1, reward_sub1, is_done_sub1, info_sub1 = env_sub1.step(action_sub1)
+                next_state_sub1 = np.reshape(next_state_sub1, [1, SIZE_STATE])
+                memory.add((state_sub1, action_sub1, reward_sub1, next_state_sub1))  # memory update
+                state_sub1 = next_state_sub1
+
+                # サブステージがゴールまで到着したら，メインの基礎学習を十分と判断し，このエピソード内では学習終了．
+                if is_done_sub1:
+                    if info_sub1['GAMEOVER']:
+                        if info_sub1['TIME'] == 0:
+                            print('sub1 {0}/{1}: TIME OVER'.format(episode + 1, NUM_EPISODES))
+                        else:
+                            print('sub1 {0}/{1}: FALL GROUND'.format(episode + 1, NUM_EPISODES))
+                    elif info_sub1['CLEAR']:
+                        print('sub1 {0}/{1}: CLEAR!'.format(episode + 1, NUM_EPISODES))
+                    else:
+                        print('Error: Wrong information of sub1 stage', file=sys.stderr)
+                        os.system('PAUSE')
+                        exit(-1)
+                    is_train_sub1 = False
+
+            if is_train_sub2:
+                action_sub2 = actor.get_action(state_sub2, episode, mainQN)  # 時刻tでの行動を決定
+                # (サブゲーム)行動a_tの実行による行動後の観測データ・報酬・ゲーム終了フラグ・詳細情報
+                next_state_sub2, reward_sub2, is_done_sub2, info_sub2 = env_sub2.step(action_sub2)
+                next_state_sub2 = np.reshape(next_state_sub2, [1, SIZE_STATE])
+                memory.add((state_sub2, action_sub2, reward_sub2, next_state_sub2))  # memory update
+                state_sub2 = next_state_sub2
+
+                # サブステージがゴールまで到着したら，メインの基礎学習を十分と判断し，このエピソード内では学習終了．
+                if is_done_sub2:
+                    if info_sub2['GAMEOVER']:
+                        if info_sub2['TIME'] == 0:
+                            print('sub2 {0}/{1}: TIME OVER'.format(episode + 1, NUM_EPISODES))
+                        else:
+                            print('sub2 {0}/{1}: FALL GROUND'.format(episode + 1, NUM_EPISODES))
+                    elif info_sub2['CLEAR']:
+                        print('sub2 {0}/{1}: CLEAR!'.format(episode + 1, NUM_EPISODES))
+                    else:
+                        print('Error: Wrong information of sub2 stage', file=sys.stderr)
+                        os.system('PAUSE')
+                        exit(-1)
+                    is_train_sub2 = False
+
+            # Q-networkの重みの学習と更新
             if (memory.len() > batch_size) and not is_done:
                 mainQN.replay(memory, batch_size, gamma, targetQN)
 
             if DQN_MODE:
                 targetQN.model.set_weights(mainQN.model.get_weights())
 
-            # process in finishing one trial
-            if is_done:
-                break
-
-        print(reward)
+        print('{0}/{1}: {2}'.format(episode + 1, NUM_EPISODES, sum(list_reward) / len(list_reward)))
+        # print(count_loop)
 
         # for t in range(max_number_of_steps + 1):  # 1試行のループ
         #     if (islearned == 1) and LENDER_MODE:  # 学習終了時にcart-pole描画
@@ -241,7 +348,9 @@ if __name__ == '__main__':
         #         isrender = 1
         #     islearned = 1
 
-    path_dirs = '../network'
+    dt_now = datetime.datetime.now()
+    # path_dirs = dt_now.strftime('../network/%Y-%m-%d_%H-%M-%S')
+    path_dirs = '../network/model_test'
     os.makedirs(path_dirs, exist_ok=True)
     mainQN.save_network(_path_dir=path_dirs, _name_network='mainQN')
     plot_model(mainQN.model, to_file=path_dirs + '/Qnetwork.png', show_shapes=True)  # Qネットワークの可視化

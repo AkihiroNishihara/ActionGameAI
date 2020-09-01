@@ -18,9 +18,9 @@ class Start:
 
         rect_ope1 = class_generate_rect.Rectangle("1: play by user", is_centering=True, _color=(0, 0, 0), _size_font=40)
         rect_ope1.update_pos_rect(0, -50)
-        rect_ope2 = class_generate_rect.Rectangle("2: play by no-trained-AI", is_centering=True, _color=(0, 0, 0),
+        rect_ope2 = class_generate_rect.Rectangle("2: play AI main stage", is_centering=True, _color=(0, 0, 0),
                                                   _size_font=40)
-        rect_ope3 = class_generate_rect.Rectangle("3: play by trained-AI", is_centering=True, _color=(0, 0, 0),
+        rect_ope3 = class_generate_rect.Rectangle("3: play AI sub stage", is_centering=True, _color=(0, 0, 0),
                                                   _size_font=40)
         rect_ope3.update_pos_rect(0, 50)
         rect_ope4 = class_generate_rect.Rectangle("4: train AI", is_centering=True, _color=(0, 0, 0), _size_font=40)
@@ -52,11 +52,11 @@ class Start:
                         _is_loop = False
                         break
                     elif event.key == K_2:
-                        self.player = 'AI_NO_TRAINED'
+                        self.player = 'AI_MAIN'
                         _is_loop = False
                         break
                     elif event.key == K_3:
-                        self.player = 'AI_TRAINED'
+                        self.player = 'AI_SUB'
                         _is_loop = False
                         break
                     elif event.key == K_4:

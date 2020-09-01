@@ -12,8 +12,6 @@ DIST_BASE_MOVE = 10
 SCREEN = Rect(0, 0, h.SCREEN_WIDTH, h.SCREEN_HEIGHT)
 
 
-# TODO:アクター（操作する側）がユーザ，AI（学習，結果表示）での動作を分ける
-
 # _player = {'USER': 人間のユーザ，'AI': ニューラルネットワークのモデル，'AGENT': DQNの学習エージェント}
 class GameStage:
     def __init__(self, _screen_class_arg, _path_file_stage, _actor):
@@ -65,6 +63,7 @@ class GameStage:
         # モデルのロード
         self.model = None
         if not self.is_training and not (self.player == 'USER'):
+            # path_dir = '../network/model_test'
             path_dir = '../network/model_test'
             str_model = open(path_dir + '/mainQN_model.json', 'r').read()
             self.model = model_from_json(str_model)
@@ -74,7 +73,7 @@ class GameStage:
         # メインループ
         self.dist_old = self.player.get_dist()
         self.x_old = self.player.rect.centerx
-        self.index_width_old = self.player.rect.centerx / h.SIZE_IMAGE_UNIT
+        self.index_width_old = int(self.player.rect.centerx / h.SIZE_IMAGE_UNIT)
         if not self.is_training:
             # 背景描写
             self.bg = pygame.Surface(SCREEN.size)
@@ -112,13 +111,9 @@ class GameStage:
             is_gameover = True
         return is_gameover
 
-    def _process_gameover(self):
-        for event in self.list_event:
-            if event.key == K_RETURN:
-                self.is_loop = False
-
-    def _process_gameclear(self):
-        for event in self.list_event:
+    def _process_end_game(self, _list_event):
+        list_event = pygame.event.get()
+        for event in list_event:
             if event.key == K_RETURN:
                 self.is_loop = False
 
@@ -181,7 +176,7 @@ class GameStage:
                                     'space': pressed_keys[K_SPACE]}
             else:
                 # 現在の周囲の状態からキー入力を受け取る
-                state_current = self.get_state_around()
+                state_current = self.get_observation_around()
                 state_current = np.array(state_current).reshape([1, len(state_current)])
                 action_int = np.argmax(self.model.predict(np.array(state_current))[0])
                 dict_pressed_key = DQN.get_dict_action(_int_act=action_int)
@@ -200,30 +195,27 @@ class GameStage:
                         h.operation_finish()
 
             # ゲームの状態判定
-            self._check_status()
+            self._check_status(self.list_event)
 
-    def _check_status(self):
+    def _check_status(self, _list_event=[]):
         self.player.update_status(self.goal)
         self.is_game_over = self._check_is_gameover(self.player)
         self.is_game_clear = self.player.get_is_touch_goal()
 
         # プレイヤー操作時の処理
         if not self.is_training:
-            if self.is_game_over:
-                self._process_gameover()
-            if not self.is_game_over:
-                if self.is_game_clear:
-                    self._process_gameclear()
+            if self.is_game_over or self.is_game_clear:
+                self._process_end_game(_list_event)
 
     def get_mode_next(self):
         return self.mode_next
 
     def try_function(self):
-        x = self.get_state_around()
+        x = self.get_observation_around()
         print("x\n")
 
     # ---------------------------------------- function for DQN --------------------------------------------------------
-    def _get_state_each(self, _index):
+    def _get_observation_each(self, _index):
         is_state_wall = False
 
         if _index[0] < 0 or int(h.SCREEN_HEIGHT / h.SIZE_IMAGE_UNIT) <= _index[0]:
@@ -246,8 +238,7 @@ class GameStage:
         # ゲームの状態判定
         self._check_status()
 
-    def get_state_around(self, _num_around=DQN.SIZE_STATE):
-        tuple_state_around = ()
+    def get_observation_around(self, _num_around=DQN.SIZE_STATE):
         # index_x, index_y: 現在プレイヤーの中心が所属する格子点の番号
         index_height = int(self.player.rect.center[1] / h.SIZE_IMAGE_UNIT)
         index_width = int(self.player.rect.center[0] / h.SIZE_IMAGE_UNIT)
@@ -255,9 +246,9 @@ class GameStage:
             self.player.rect.center[0] % h.SIZE_IMAGE_UNIT, self.player.rect.center[1] % h.SIZE_IMAGE_UNIT)
 
         list_around = []
-        for index_h, index_w in itertools.product(range(index_height - 1, index_height + 2),
-                                                  range(index_width - 1, index_width + 2)):
-            list_around.append(self._get_state_each((index_h, index_w)))
+        for index_h, index_w in itertools.product(range(index_height - 2, index_height + 3),
+                                                  range(index_width - 2, index_width + 3)):
+            list_around.append(self._get_observation_each((index_h, index_w)))
         list_around.append(rect_center_in_box[0])
         list_around.append(rect_center_in_box[1])
         return list_around
@@ -293,21 +284,29 @@ class GameStage:
         # 右に進まない場合（停止や左移動）は報酬をマイナス
         x_cur = self.player.rect.centerx
         dif_x = x_cur - self.x_old
-        self.x_old = x_cur
         coef_is_not_on_block = 1
         if not self.player.get_is_on_block():
-            coef_is_not_on_block = 5
+            coef_is_not_on_block = 0.75
         reward = coef_is_not_on_block * dif_x
 
         # 隣のセルに移動した際の追加報酬
-        index_width_cur = self.player.rect.centerx / h.SIZE_IMAGE_UNIT
-        reward += (index_width_cur - self.index_width_old) * 1000
+        index_width_cur = int(self.player.rect.centerx / h.SIZE_IMAGE_UNIT)
+        dif_index_width = index_width_cur - self.index_width_old
+        reward += coef_is_not_on_block * dif_index_width * 100
+        # if dif_index_width > 0:
+        #     print('X')
 
         # ゲームの状態による追加報酬
         if self.is_game_over:
-            reward -= 1000
+            reward -= self.time_remain * 500
         elif self.is_game_clear:
-            reward += self.time_remain * 100000
+            reward += self.time_remain * 10000
+        # index_width_cur = self.player.rect.centerx / h.SIZE_IMAGE_UNIT
+        # reward = index_width_cur - self.index_width_old
+        # if self.is_game_over:
+        #     reward = -1
+        self.x_old = x_cur
+        self.index_width_old = index_width_cur
         return reward
 
     # 終了状態か否かを返す
