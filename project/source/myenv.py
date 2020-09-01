@@ -1,13 +1,11 @@
 import gym
 import gym.spaces
+import numpy as np
 
-from project.source import mode_gamestage
+from project.source import mode_gamestage, DQN, header as h
 
 
 class MyEnv(gym.Env):
-    # metadata = {'render.modes': ['human', 'ansi']}
-    MAX_STEPS = 100
-
     def __init__(self, _path_file_stage, _screen):
         super().__init__()
         self.path_file_stage = _path_file_stage
@@ -20,7 +18,9 @@ class MyEnv(gym.Env):
             報酬の範囲：0以上
         '''
         self.action_space = gym.spaces.MultiBinary(3)
-        self.observation_space = gym.spaces.Discrete(4)
+        # self.observation_space = gym.spaces.Discrete(DQN.SIZE_STATE)
+        self.observation_space = gym.spaces.Box(low=0.0, high=h.SIZE_IMAGE_UNIT, shape=(1, DQN.SIZE_STATE),
+                                                dtype=np.float32)
         self.reward_range = (0.0, float('inf'))
 
         self.screen = _screen
@@ -30,7 +30,7 @@ class MyEnv(gym.Env):
     # ゲームを呼び出すことで初期化
     def reset(self):
         self.game_stage = mode_gamestage.GameStage(_screen_class_arg=self.screen, _path_file_stage=self.path_file_stage,
-                                                   _is_training=True)
+                                                   _actor='AGENT')
 
     # _actionは（right, left, jump）の各キーのON,OFFで獲得
     def step(self, _action):
@@ -38,7 +38,7 @@ class MyEnv(gym.Env):
 
         # 状態，報酬，終了条件の取得
         observation = self.game_stage.get_state_around()
-        reward = self.game_stage.get_reward()
+        reward = self.game_stage.get_reward
         self.done = self.game_stage.get_is_done()
         info = {}
 
@@ -57,47 +57,3 @@ class MyEnv(gym.Env):
 
     def _seed(self, seed=None):
         pass
-
-    # ---------------------------------------- function specified for this class ---------------------------------------
-
-    # def _get_damage(self, pos):
-    #     # ダメージの計算
-    #     field_type = self.FIELD_TYPES[self.MAP[tuple(pos)]]
-    #     if field_type == 'S':
-    #         return 0
-    #     elif field_type == 'G':
-    #         return 0
-    #     elif field_type == '~':
-    #         return 10 if np.random.random() < 1 / 10. else 0
-    #     elif field_type == 'w':
-    #         return 10 if np.random.random() < 1 / 2. else 0
-    #     elif field_type == '=':
-    #         return 11 if np.random.random() < 1 / 2. else 1
-    #
-    # def _is_movable(self, pos):
-    #     # マップの中にいるか、歩けない場所にいないか
-    #     return (
-    #             0 <= pos[0] < self.MAP.shape[0]
-    #             and 0 <= pos[1] < self.MAP.shape[1]
-    #             and self.FIELD_TYPES[self.MAP[tuple(pos)]] != 'A'
-    #     )
-    #
-    # def _observe(self):
-    #     # マップに勇者の位置を重ねて返す
-    #     observation = self.MAP.copy()
-    #     observation[tuple(self.pos)] = self.FIELD_TYPES.index('Y')
-    #     return observation
-    #
-    # def _is_done(self):
-    #     # 今回は最大で self.MAX_STEPS までとした
-    #     if (self.pos == self.goal).all():
-    #         return True
-    #     elif self.steps > self.MAX_STEPS:
-    #         return True
-    #     else:
-    #         return False
-    #
-    # def _find_pos(self, field_type):
-    #     return np.array(list(zip(*np.where(
-    #         self.MAP == self.FIELD_TYPES.index(field_type)
-    #     ))))
