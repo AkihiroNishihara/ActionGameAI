@@ -15,12 +15,13 @@ class ActionGame:
         _screen = pygame.display.set_mode((h.SCREEN_WIDTH, h.SCREEN_HEIGHT))
 
         mode_current = None
+        actor = None
         while True:
             if self.MODE is "START":
                 mode_current = mode_start.Start(_screen)
-                self.MODE = mode_current.get_mode_next()
+                self.MODE, actor = mode_current.get_mode_next()
             elif self.MODE is "STAGE":
-                mode_current = mode_gamestage.GameStage(_screen, "./stage_sample.txt")
+                mode_current = mode_gamestage.GameStage(_screen, "./stage_sample.txt", _actor=actor)
                 self.MODE = mode_current.get_mode_next()
             elif self.MODE is "END":
                 mode_current = mode_under_dev.UnderDevelopment(_screen)
