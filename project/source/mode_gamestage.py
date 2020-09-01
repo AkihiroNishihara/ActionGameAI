@@ -2,28 +2,34 @@ import pygame
 from pygame.locals import *
 import itertools
 import numpy as np
-from project.source import header as h, class_generate_rect
+from project.source import header as h, class_generate_rect, DQN
+from keras.models import model_from_json
+from keras.optimizers import Adam
 
 TIME_STAGE = 30
-PARAM_ACCEL = 10
+PARAM_ACCEL = 1
 DIST_BASE_MOVE = 10
 SCREEN = Rect(0, 0, h.SCREEN_WIDTH, h.SCREEN_HEIGHT)
 
 
+# TODO:アクター（操作する側）がユーザ，AI（学習，結果表示）での動作を分ける
+
+# _player = {'USER': 人間のユーザ，'AI': ニューラルネットワークのモデル，'AGENT': DQNの学習エージェント}
 class GameStage:
-    def __init__(self, _screen_class_arg, _path_file_stage, _is_training=False):
+    def __init__(self, _screen_class_arg, _path_file_stage, _actor):
         self.mode_next = "END"
         self.screen = _screen_class_arg
         self.is_loop = True
         self.is_game_over = False
         self.is_game_clear = False
-        self.is_training = _is_training
+        self.is_training = True if (_actor is 'AGENT') else False
+        self.actor = _actor
         self.time_start = pygame.time.get_ticks()
         self.time_remain = TIME_STAGE
         self.time_elapsed = 0
         # フォントの定義
         self.font = pygame.font.Font(None, 60)
-        # ステージ情報のロード(0:空，1:ブロック，2:player，3:ゴール)
+        # ステージ情報のロード(0:空，1:ブロック，2:ゴール，3:壁，4:player)
         self.list_info_stage, _list_pos_player_ini, _list_pos_goal_ini = self._load_info_gamestage(_path_file_stage)
 
         # テキストオブジェクトの生成
@@ -56,8 +62,20 @@ class GameStage:
         self.player = Player(self._get_pos_topleft(_list_pos_player_ini), self.blocks, _is_training=self.is_training)
         self.goal = Goal(self._get_pos_topleft(_list_pos_goal_ini))
 
+        # モデルのロード
+        self.model = None
+        if not self.is_training and not (self.player == 'USER'):
+            path_dir = '../network/model_test'
+            str_model = open(path_dir + '/mainQN_model.json', 'r').read()
+            self.model = model_from_json(str_model)
+            self.model.compile(loss=DQN.huberloss, optimizer=Adam(lr=DQN.LEARNING_RATE))
+            self.model.load_weights(path_dir + '/mainQN_weights.hdf5')
+
         # メインループ
-        if not _is_training:
+        self.dist_old = self.player.get_dist()
+        self.x_old = self.player.rect.centerx
+        self.index_width_old = self.player.rect.centerx / h.SIZE_IMAGE_UNIT
+        if not self.is_training:
             # 背景描写
             self.bg = pygame.Surface(SCREEN.size)
             self.bg.fill((200, 255, 255))
@@ -65,37 +83,6 @@ class GameStage:
             pygame.display.update()
 
             self._run_playing()
-
-        # clock = pygame.time.Clock()
-        # while self.is_loop:
-        #     if not _is_training:
-        #         clock.tick(60)
-        #     self._get_time_remain()
-        #     self._update_sprite()
-        #     self._draw()
-        #     pygame.display.update()
-        #
-        #     # イベント獲得
-        #     self.list_event = pygame.event.get()
-        #     for event in self.list_event:
-        #         if event.type == QUIT:
-        #             h.operation_finish()
-        #         if event.type == KEYDOWN:
-        #             if event.key == K_ESCAPE:
-        #                 h.operation_finish()
-        #
-        #     self.player.check_status(goal)
-        #     self.is_game_over = self._check_is_gameover(self.player)
-        #     if self.is_game_over:
-        #         self._process_gameover()
-        #     if not self.is_game_over:
-        #         self.is_game_clear = self.player.get_is_touch_goal()
-        #         if self.is_game_clear:
-        #             self._process_gameclear()
-        #     self._key_handler()
-
-        # 関数テスト用
-        # self.try_function()
 
     # ステージのブロックの配置およびプレイヤーの初期位置の取得
     def _load_info_gamestage(self, _path_file_stage):
@@ -112,7 +99,7 @@ class GameStage:
         for i, j in itertools.product(range(len(list_info_gamestage)), range(len(list_info_gamestage[0]))):
             if list_info_gamestage[i][j] == 2:
                 list_pos_goal_ini = [i, j]
-            elif list_info_gamestage[i][j] == 3:
+            elif list_info_gamestage[i][j] == 4:
                 list_pos_player_ini = [i, j]
                 list_info_gamestage[i][j] = 0
 
@@ -179,24 +166,26 @@ class GameStage:
 
         pygame.display.update()
 
-    # def _key_handler(self):
-    #     """キー入力処理"""
-    #     for event in pygame.event.get():
-    #         if event.type == QUIT:
-    #             h.operation_finish()
-    #         elif event.type == KEYDOWN and event.key == K_ESCAPE:
-    #             h.operation_finish()
-
     def _run_playing(self):
         clock = pygame.time.Clock()
         while self.is_loop:
             clock.tick(60)  # 60fps
             self._update_time_remain()
 
-            # ユーザからのキー入力を受け取り，スプライトを更新
-            pressed_keys = pygame.key.get_pressed()
-            tuple_pressed_key = (pressed_keys[K_RIGHT], pressed_keys[K_LEFT], pressed_keys[K_SPACE])
-            self._update_sprite(_input_action=tuple_pressed_key)
+            # action = np.argmax(model.predict(state)[0])
+            dict_pressed_key = {}
+            if self.actor == 'USER':
+                # ユーザの操作からキー入力を受け取る
+                pressed_keys = pygame.key.get_pressed()
+                dict_pressed_key = {'right': pressed_keys[K_RIGHT], 'left': pressed_keys[K_LEFT],
+                                    'space': pressed_keys[K_SPACE]}
+            else:
+                # 現在の周囲の状態からキー入力を受け取る
+                state_current = self.get_state_around()
+                state_current = np.array(state_current).reshape([1, len(state_current)])
+                action_int = np.argmax(self.model.predict(np.array(state_current))[0])
+                dict_pressed_key = DQN.get_dict_action(_int_act=action_int)
+            self._update_sprite(_input_action=dict_pressed_key)
 
             # 画面の更新
             self._update_display()
@@ -213,26 +202,16 @@ class GameStage:
             # ゲームの状態判定
             self._check_status()
 
-            # self.player.check_status(self.goal)
-            # self.is_game_over = self._check_is_gameover(self.player)
-            # if self.is_game_over:
-            #     self._process_gameover()
-            # if not self.is_game_over:
-            #     self.is_game_clear = self.player.get_is_touch_goal()
-            #     if self.is_game_clear:
-            #         self._process_gameclear()
-            # self._key_handler()
-
     def _check_status(self):
         self.player.update_status(self.goal)
         self.is_game_over = self._check_is_gameover(self.player)
+        self.is_game_clear = self.player.get_is_touch_goal()
 
         # プレイヤー操作時の処理
         if not self.is_training:
             if self.is_game_over:
                 self._process_gameover()
             if not self.is_game_over:
-                self.is_game_clear = self.player.get_is_touch_goal()
                 if self.is_game_clear:
                     self._process_gameclear()
 
@@ -247,15 +226,15 @@ class GameStage:
     def _get_state_each(self, _index):
         is_state_wall = False
 
-        if _index[0] < 0 or int(h.SCREEN_WIDTH / h.SIZE_IMAGE_UNIT) <= _index[0]:
+        if _index[0] < 0 or int(h.SCREEN_HEIGHT / h.SIZE_IMAGE_UNIT) <= _index[0]:
             is_state_wall = True
-        elif _index[1] < 0 or int(h.SCREEN_HEIGHT / h.SIZE_IMAGE_UNIT) <= _index[1]:
+        elif _index[1] < 0 or int(h.SCREEN_WIDTH / h.SIZE_IMAGE_UNIT) <= _index[1]:
             is_state_wall = True
 
         if is_state_wall:
             state = 3
         else:
-            state = self.list_info_stage[_index[1]][_index[0]]
+            state = self.list_info_stage[_index[0]][_index[1]]
         return state
 
     def step_training(self, _input_act_agent):
@@ -267,47 +246,68 @@ class GameStage:
         # ゲームの状態判定
         self._check_status()
 
-        # self.player.check_status(self.goal)
-        # self.is_game_over = self._check_is_gameover(self.player)
-        # if self.is_game_over:
-        #     self._process_gameover()
-        # if not self.is_game_over:
-        #     self.is_game_clear = self.player.get_is_touch_goal()
-        #     if self.is_game_clear:
-        #         self._process_gameclear()
-
-    def get_state_around(self, _num_around=4):
+    def get_state_around(self, _num_around=DQN.SIZE_STATE):
         tuple_state_around = ()
         # index_x, index_y: 現在プレイヤーの中心が所属する格子点の番号
-        index_x = int(self.player.rect.center[0] / h.SIZE_IMAGE_UNIT)
-        index_y = int(self.player.rect.center[1] / h.SIZE_IMAGE_UNIT)
+        index_height = int(self.player.rect.center[1] / h.SIZE_IMAGE_UNIT)
+        index_width = int(self.player.rect.center[0] / h.SIZE_IMAGE_UNIT)
+        rect_center_in_box = (
+            self.player.rect.center[0] % h.SIZE_IMAGE_UNIT, self.player.rect.center[1] % h.SIZE_IMAGE_UNIT)
 
-        # 上下左右の座標
-        index_right = (index_x + 1, index_y)
-        index_left = (index_x - 1, index_y)
-        index_up = (index_x, index_y - 1)
-        index_down = (index_x, index_y + 1)
-
-        # 上下左右の状態
-        state_up = self._get_state_each(index_up)
-        state_right = self._get_state_each(index_right)
-        state_down = self._get_state_each(index_down)
-        state_left = self._get_state_each(index_left)
-
-        # 上下左右の状態を返す
-        if _num_around == 4:
-            tuple_state_around = (state_up, state_right, state_down, state_left)
-        return tuple_state_around
+        list_around = []
+        for index_h, index_w in itertools.product(range(index_height - 1, index_height + 2),
+                                                  range(index_width - 1, index_width + 2)):
+            list_around.append(self._get_state_each((index_h, index_w)))
+        list_around.append(rect_center_in_box[0])
+        list_around.append(rect_center_in_box[1])
+        return list_around
 
     # 報酬を設定して返す
+    @property
     def get_reward(self):
-        param_state_game = 0  # 0:continue, 1:clear, -1:gameover
-        if self.is_game_clear:
-            param_state_game = 1
-        elif self.is_game_over:
-            param_state_game = -1
-        dist = self.player.get_dist()
-        reward = (self.time_remain + 0.001) * dist * 10 ** param_state_game
+        # param_state_game = 0  # 0:continue, 1:clear, -1:gameover
+        # if self.is_game_clear:
+        #     param_state_game = 10
+        # elif self.is_game_over and self.time_remain != 0.0:
+        #     # 時間切れ以外でゲームオーバー，すなわち地面に落ちた場合はマイナス評価
+        #     param_state_game = -1
+        # dist_cur = self.player.get_dist()
+        '''
+        reward = (40 / dist_cur) ** 2 * 1000 ** param_state_game
+        reward = (self.time_remain + 0.001)**2 * 1.0 / dist_cur * 1000 ** param_state_game
+        reward = 100 / dist + (self.time_remain + 0.001) ** param_state_game - 1
+        reward = 1000 ** param_state_game
+        reward = (40 / dist) ** 3 * 1000 ** param_state_game
+        reward = param_state_game * 40 / dist        
+        reward = self.dist_old - dist_cur
+        reward = (self.time_remain / dist_cur) ** param_state_game
+        self.dist_old = dist_cur
+        '''
+        # reward = 1 if self.dist_old - dist_cur > 0 else -1
+        '''
+        1. 停止にマイナス評価を付与
+        2. ジャンプにプラス評価を付与(ブロックから離れている状態)
+        '''
+
+        reward = 0
+        # 右に進まない場合（停止や左移動）は報酬をマイナス
+        x_cur = self.player.rect.centerx
+        dif_x = x_cur - self.x_old
+        self.x_old = x_cur
+        coef_is_not_on_block = 1
+        if not self.player.get_is_on_block():
+            coef_is_not_on_block = 5
+        reward = coef_is_not_on_block * dif_x
+
+        # 隣のセルに移動した際の追加報酬
+        index_width_cur = self.player.rect.centerx / h.SIZE_IMAGE_UNIT
+        reward += (index_width_cur - self.index_width_old) * 1000
+
+        # ゲームの状態による追加報酬
+        if self.is_game_over:
+            reward -= 1000
+        elif self.is_game_clear:
+            reward += self.time_remain * 100000
         return reward
 
     # 終了状態か否かを返す
@@ -347,7 +347,7 @@ class Player(pygame.sprite.Sprite):
             self.coef_speed = PARAM_ACCEL
 
     # スプライトの更新(Spriteクラスのoverride)
-    def update(self, _is_training=False, _input_action=()):
+    def update(self, _is_training=False, _input_action={}):
         if not self.is_on_ground and not self.is_touch_goal:
             self.action(_input_action)
 
@@ -427,12 +427,17 @@ class Player(pygame.sprite.Sprite):
         else:
             xy_player = np.array(self.rect.center)
             xy_goal = np.array(_goal.rect.center)
+            # xy_player = np.array(self.rect.bottomright)
+            # xy_goal = np.array(_goal.rect.topleft)
             self.dist = np.linalg.norm(xy_player - xy_goal)
             if self.dist <= h.SIZE_IMAGE_UNIT:
                 self.is_touch_goal = True
 
     def get_is_on_ground(self):
         return self.is_on_ground
+
+    def get_is_on_block(self):
+        return self.is_on_block
 
     def get_is_touch_goal(self):
         return self.is_touch_goal
@@ -441,18 +446,20 @@ class Player(pygame.sprite.Sprite):
         return self.dist
 
     # _tuple_pressed_key = (right, left, space)
-    def action(self, _tuple_pressed_key):
-        if _tuple_pressed_key[0]:
+    def action(self, _dict_input):
+        if _dict_input['right'] and _dict_input['left']:
+            self.fpvx = 0.0
+        elif _dict_input['right']:
             self.image = self.right_image
             self.fpvx = self.MOVE_SPEED * self.coef_speed
-        elif _tuple_pressed_key[1]:
+        elif _dict_input['left']:
             self.image = self.left_image
             self.fpvx = -self.MOVE_SPEED * self.coef_speed
         else:
             self.fpvx = 0.0
 
         # ジャンプ
-        if _tuple_pressed_key[2]:
+        if _dict_input['space']:
             if self.is_on_block:
                 self.fpvy = - self.JUMP_SPEED * self.coef_speed  # 上向きに初速度を与える
                 self.is_on_block = False
