@@ -294,8 +294,8 @@ def main():
         # print(count_loop)
 
     dt_now = datetime.datetime.now()
-    # path_dirs = dt_now.strftime('../network/%Y-%m-%d_%H-%M-%S')
-    path_dirs = '../network/model_{0}'.format(dt_now)
+    str_time = dt_now.strftime('%Y-%m-%d_%H-%M-%S')
+    path_dirs = '../network/model_{0}'.format(str_time)
     os.makedirs(path_dirs, exist_ok=True)
     mainQN.save_network(_path_dir=path_dirs, _name_network='mainQN')
     plot_model(mainQN.model, to_file=path_dirs + '/Qnetwork.png', show_shapes=True)  # Qネットワークの可視化
