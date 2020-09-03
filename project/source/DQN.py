@@ -5,7 +5,7 @@ import datetime
 import math
 import sys
 from keras.models import Sequential
-from keras.layers import Dense, Conv2D, Input, Flatten
+from keras.layers import Dense, Dropout
 from keras.optimizers import Adam
 from keras.utils import plot_model
 from collections import deque
@@ -16,13 +16,23 @@ from tqdm import tqdm
 from project.source import myenv, header as h
 import random as rn
 
-LEARNING_RATE = 0.01
-SIZE_STATE = 27  # 8方向+ボックス内の座標
+LEARNING_RATE = 0.00001  # Q-networkの学習係数
+# LEARNING_RATE = 0.01  # Q-networkの学習係数
+SIZE_STATE = 7  # 5マス+マス内の座標
 SIZE_ACTION = 8
-SIZE_HIDDEN = 32
+SIZE_HIDDEN = 64
 SEED = 1
 NUM_EPISODES = 19  # 総試行回数
-SIZE_LOOP = 200
+SIZE_LOOP = 1000
+GAMMA = 0.99  # 割引係数
+# memory_size = 10000  # バッファーメモリの大きさ
+MEMORY_SIZE = 10000  # バッファーメモリの大きさ
+BATCH_SIZE = 32  # Q-networkを更新するバッチの大記載
+
+# MODE PARAMETER
+OBSERVE_PLAYER = 'CENTER'
+DQN_MODE = 1  # 1がDQN、0がDDQNです
+LENDER_MODE = 0  # 0は学習後も描画なし、1は学習終了後に描画する
 
 
 # 損失関数の定義(huber関数)
@@ -38,12 +48,12 @@ def huberloss(_y_true, _y_pred):
 
 # Q関数をDLのネットワーククラスとして定義
 class QNetwork:
-    def __init__(self, _learning_rate=LEARNING_RATE, _state_size=SIZE_STATE, _action_size=SIZE_ACTION, _hidden_size=10):
+    def __init__(self, _learning_rate=LEARNING_RATE, _state_size=SIZE_STATE, _action_size=SIZE_ACTION,
+                 _hidden_size=SIZE_HIDDEN):
         self.model = Sequential()
         self.model.add(Dense(_hidden_size, activation='relu', input_dim=_state_size))
         self.model.add(Dense(_hidden_size, activation='relu'))
-        self.model.add(Dense(_hidden_size, activation='relu'))
-        self.model.add(Dense(_hidden_size, activation='relu'))
+        # self.model.add(Dense(_hidden_size, activation='relu'))
         self.model.add(Dense(_action_size, activation='linear'))
         self.optimizer = Adam(lr=_learning_rate)
         self.model.compile(loss=huberloss, optimizer=self.optimizer)
@@ -135,11 +145,8 @@ def get_dict_action(_int_act):
     return dict_pressed_key
 
 
-DQN_MODE = 0  # 1がDQN、0がDDQNです
-LENDER_MODE = 0  # 0は学習後も描画なし、1は学習終了後に描画する
-
 # メイン関数
-if __name__ == '__main__':
+def main():
     # env = gym.make('CartPole-v0')
     # env = wrappers.Monitor(env, './movie/cartpoleDDQN', video_callable=(lambda ep: ep % 100 == 0))  # 動画保存する場合
 
@@ -153,26 +160,19 @@ if __name__ == '__main__':
     screen = pygame.display.set_mode((h.SCREEN_WIDTH, h.SCREEN_HEIGHT))
     screen_sub1 = pygame.display.set_mode((h.SCREEN_WIDTH, h.SCREEN_HEIGHT))
     screen_sub2 = pygame.display.set_mode((h.SCREEN_WIDTH, h.SCREEN_HEIGHT))
+    # env = myenv.MyEnv(_path_file_stage='./stage_sample.txt', _screen=screen)
     env = myenv.MyEnv(_path_file_stage='./stage_sample.txt', _screen=screen)
     env_sub1 = myenv.MyEnv(_path_file_stage='./stage_sub1.txt', _screen=screen_sub1)
     env_sub2 = myenv.MyEnv(_path_file_stage='./stage_sub2.txt', _screen=screen_sub2)
 
-    num_consecutive_iterations = 10  # 学習完了評価の平均計算を行う試行回数
-    total_reward_vec = np.zeros(num_consecutive_iterations)  # 各試行の報酬を格納
-    gamma = 0.99  # 割引係数
     islearned = 0  # 学習が終わったフラグ
     isrender = 0  # 描画フラグ
     # ---
-    # learning_rate = 0.00001  # Q-networkの学習係数
-    learning_rate = 0.01  # Q-networkの学習係数
-    # memory_size = 10000  # バッファーメモリの大きさ
-    memory_size = 1000  # バッファーメモリの大きさ
-    batch_size = 32  # Q-networkを更新するバッチの大記載
 
     # ネットワーク・メモリ・Actorの生成
-    mainQN = QNetwork(_hidden_size=SIZE_HIDDEN, _learning_rate=learning_rate)
-    targetQN = QNetwork(_hidden_size=SIZE_HIDDEN, _learning_rate=learning_rate)
-    memory = Memory(_max_size=memory_size)
+    mainQN = QNetwork(_hidden_size=SIZE_HIDDEN, _learning_rate=LEARNING_RATE)
+    targetQN = QNetwork(_hidden_size=SIZE_HIDDEN, _learning_rate=LEARNING_RATE)
+    memory = Memory(_max_size=MEMORY_SIZE)
     actor = Actor()
 
     # メインルーチン
@@ -282,8 +282,8 @@ if __name__ == '__main__':
                     is_train_sub2 = False
 
             # Q-networkの重みの学習と更新
-            if (memory.len() > batch_size) and not is_done:
-                mainQN.replay(memory, batch_size, gamma, targetQN)
+            if (memory.len() > BATCH_SIZE) and not is_done:
+                mainQN.replay(memory, BATCH_SIZE, GAMMA, targetQN)
 
             if DQN_MODE:
                 targetQN.model.set_weights(mainQN.model.get_weights())
@@ -354,3 +354,7 @@ if __name__ == '__main__':
     os.makedirs(path_dirs, exist_ok=True)
     mainQN.save_network(_path_dir=path_dirs, _name_network='mainQN')
     plot_model(mainQN.model, to_file=path_dirs + '/Qnetwork.png', show_shapes=True)  # Qネットワークの可視化
+
+
+if __name__ == '__main__':
+    main()
