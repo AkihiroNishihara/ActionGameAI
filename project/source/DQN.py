@@ -1,32 +1,31 @@
 import os
 import numpy as np
-import time
 import datetime
 import math
 import sys
+import shutil
 from keras.models import Sequential
-from keras.layers import Dense, Dropout
+from keras.layers import Dense, Conv2D, MaxPool2D
 from keras.optimizers import Adam
 from keras.utils import plot_model
 from collections import deque
 from keras import backend as K  # Kerasは自身で行列計算とかしない，それをするためのやーつ
 import tensorflow as tf
 import pygame
-from tqdm import tqdm
 from project.source import myenv, header as h
-import random as rn
 
+FUNC_REWARD = 1  # 強化学習における報酬の設定
 LEARNING_RATE = 0.00001  # Q-networkの学習係数
 # LEARNING_RATE = 0.01  # Q-networkの学習係数
-SIZE_STATE = 7  # 5マス+マス内の座標
+SIZE_STATE = 26  # 5マス+マス内の座標
 SIZE_ACTION = 8
-SIZE_HIDDEN = 64
+SIZE_HIDDEN = 32
 SEED = 1
 NUM_EPISODES = 19  # 総試行回数
 SIZE_LOOP = 1000
 GAMMA = 0.99  # 割引係数
 # memory_size = 10000  # バッファーメモリの大きさ
-MEMORY_SIZE = 10000  # バッファーメモリの大きさ
+MEMORY_SIZE = 1000  # バッファーメモリの大きさ
 BATCH_SIZE = 32  # Q-networkを更新するバッチの大記載
 
 # MODE PARAMETER
@@ -53,13 +52,16 @@ class QNetwork:
         self.model = Sequential()
         self.model.add(Dense(_hidden_size, activation='relu', input_dim=_state_size))
         self.model.add(Dense(_hidden_size, activation='relu'))
-        # self.model.add(Dense(_hidden_size, activation='relu'))
+        self.model.add(Dense(_hidden_size, activation='relu'))
         self.model.add(Dense(_action_size, activation='linear'))
         self.optimizer = Adam(lr=_learning_rate)
         self.model.compile(loss=huberloss, optimizer=self.optimizer)
-        # input = Input(shape=(1, _state_size))
-        # self.model = Dense(_hidden_size, activation='relu')(Flatten(input))
-        # self.model = Dense(_action_size, activation='linear')(self.model)
+        # self.model = Sequential()
+        # self.model.add(Conv2D(16, (3, 3), padding='same', input_shape=(5, 5), activation='relu'))
+        # self.model.add(MaxPool2D(2, 2))
+        # self.model.add(Flatten())
+        # self.model.add(Dense(SIZE_HIDDEN, activation='relu'))
+        # self.model.add(Dense(_action_size, activation='linear'))
         # self.optimizer = Adam(lr=_learning_rate)
         # self.model.compile(loss=huberloss, optimizer=self.optimizer)
 
@@ -291,69 +293,13 @@ def main():
         print('{0}/{1}: {2}'.format(episode + 1, NUM_EPISODES, sum(list_reward) / len(list_reward)))
         # print(count_loop)
 
-        # for t in range(max_number_of_steps + 1):  # 1試行のループ
-        #     if (islearned == 1) and LENDER_MODE:  # 学習終了時にcart-pole描画
-        #         env.render()
-        #         time.sleep(0.1)
-        #         print(state[0, 0])
-        #
-        #     action = actor.get_action(state, episode, mainQN)  # 時刻tでの行動を決定
-        #     next_state, reward, is_done, info = env.step(action)  # 行動a_tの実行による行動後の観測データ・報酬・ゲーム終了フラグ・詳細情報
-        #     next_state = np.reshape(next_state, [1, SIZE_STATE])
-        #
-        #     # 報酬を設定し、与える
-        #     if is_done:
-        #         next_state = np.zeros(state.shape)
-        #     #     # 195ステップまで立てていたか判定
-        #     #     if t < 195:
-        #     #         reward = -1  #
-        #     #     else:
-        #     #         reward = 1
-        #     # else:
-        #     #     reward = 0
-        #     #
-        #     # episode_reward += 1  # 合計報酬を更新
-        #     episode_reward += reward
-        #
-        #     memory.add((state, action, reward, next_state))  # memory update
-        #     state = next_state  # state update
-        #
-        #     # learning and update the weights of Q-network
-        #     if (memory.len() > batch_size) and not islearned:
-        #         mainQN.replay(memory, batch_size, gamma, targetQN)
-        #
-        #     if DQN_MODE:
-        #         targetQN.model.set_weights(mainQN.model.get_weights())
-        #
-        #     # process in finishing one trial
-        #     if is_done:
-        #         total_reward_vec = np.hstack((total_reward_vec[1:], episode_reward))  # record rewards
-        #         print(
-        #             '{0} Episode finished after {1} time steps / mean {2}'.format(episode, t + 1,
-        #                                                                           total_reward_vec.mean()))
-        #         break
-
-        # 複数試行の平均報酬で終了を判断
-        # if total_reward_vec.mean() > goal_average_reward:
-        #     print('Episode {0} train agent successfully!'.format(episode))
-        #     islearned = 1
-        #     if isrender == 0:
-        #         isrender = 1
-        #
-        # env = wrappers.Monitor(env, './movie/cartpoleDDQN')  # 動画保存する場合
-        # 10エピソードだけでどんな挙動になるのか見たかったら、以下のコメントを外す
-        # if episode > 10:
-        #     if isrender == 0:
-        #         env = wrappers.Monitor(env, './movie/cartpole-experiment-1')  # 動画保存する場合
-        #         isrender = 1
-        #     islearned = 1
-
     dt_now = datetime.datetime.now()
     # path_dirs = dt_now.strftime('../network/%Y-%m-%d_%H-%M-%S')
-    path_dirs = '../network/model_test'
+    path_dirs = '../network/model_{0}'.format(dt_now)
     os.makedirs(path_dirs, exist_ok=True)
     mainQN.save_network(_path_dir=path_dirs, _name_network='mainQN')
     plot_model(mainQN.model, to_file=path_dirs + '/Qnetwork.png', show_shapes=True)  # Qネットワークの可視化
+    shutil.copy('./stage_sample.txt', path_dirs)
 
 
 if __name__ == '__main__':
