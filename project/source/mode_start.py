@@ -10,21 +10,27 @@ class Start:
     def __init__(self, _screen_class_arg):
         self.mode_next = "STAGE"
         self.player = ''
+        self.num_stage = None
         self.screen = _screen_class_arg
 
         rect_title = class_generate_rect.Rectangle("Action Game AI", is_centering=True, _color=(255, 0, 0),
                                                    _size_font=80)
         rect_title.update_pos_rect(0, -150)
 
-        rect_ope1 = class_generate_rect.Rectangle("1: play by user", is_centering=True, _color=(0, 0, 0), _size_font=40)
+        # rect_ope1 = class_generate_rect.Rectangle("1: play by user", is_centering=True, _color=(0, 0, 0), _size_font=40)
+        # rect_ope1.update_pos_rect(0, -50)
+        # rect_ope2 = class_generate_rect.Rectangle("2: play AI main stage", is_centering=True, _color=(0, 0, 0),
+        #                                           _size_font=40)
+        # rect_ope3 = class_generate_rect.Rectangle("3: play AI sub stage", is_centering=True, _color=(0, 0, 0),
+        #                                           _size_font=40)
+        # rect_ope3.update_pos_rect(0, 50)
+        # rect_ope4 = class_generate_rect.Rectangle("4: train AI", is_centering=True, _color=(0, 0, 0), _size_font=40)
+        # rect_ope4.update_pos_rect(0, 100)
+        rect_ope1 = class_generate_rect.Rectangle("play by user: 1 ~ 9", is_centering=True, _color=(0, 0, 0),
+                                                  _size_font=40)
         rect_ope1.update_pos_rect(0, -50)
-        rect_ope2 = class_generate_rect.Rectangle("2: play AI main stage", is_centering=True, _color=(0, 0, 0),
+        rect_ope2 = class_generate_rect.Rectangle("play by AI: Q ~ O", is_centering=True, _color=(0, 0, 0),
                                                   _size_font=40)
-        rect_ope3 = class_generate_rect.Rectangle("3: play AI sub stage", is_centering=True, _color=(0, 0, 0),
-                                                  _size_font=40)
-        rect_ope3.update_pos_rect(0, 50)
-        rect_ope4 = class_generate_rect.Rectangle("4: train AI", is_centering=True, _color=(0, 0, 0), _size_font=40)
-        rect_ope4.update_pos_rect(0, 100)
         rect_help = class_generate_rect.Rectangle("Action = arrow key: move, space key: jump", is_centering=True,
                                                   _color=(0, 0, 255), _size_font=40)
         rect_help.update_pos_rect(0, 200)
@@ -33,38 +39,39 @@ class Start:
         while _is_loop:
             self.screen.fill((255, 255, 255))
             self.screen.blit(rect_title.get_obj(), rect_title.get_pos())  # テキストの描写
-            self.screen.blit(rect_ope1.get_obj(), (150, (rect_ope1.get_pos()).center[1]))  # テキストの描写
-            self.screen.blit(rect_ope2.get_obj(), (150, (rect_ope2.get_pos()).center[1]))  # テキストの描写
-            self.screen.blit(rect_ope3.get_obj(), (150, (rect_ope3.get_pos()).center[1]))  # テキストの描写
-            self.screen.blit(rect_ope4.get_obj(), (150, (rect_ope4.get_pos()).center[1]))  # テキストの描写
+            self.screen.blit(rect_ope1.get_obj(), rect_ope1.get_pos())  # テキストの描写
+            self.screen.blit(rect_ope2.get_obj(), rect_ope2.get_pos())  # テキストの描写
+            # self.screen.blit(rect_ope1.get_obj(), (150, (rect_ope1.get_pos()).center[1]))  # テキストの描写
+            # self.screen.blit(rect_ope2.get_obj(), (150, (rect_ope2.get_pos()).center[1]))  # テキストの描写
+            # self.screen.blit(rect_ope3.get_obj(), (150, (rect_ope3.get_pos()).center[1]))  # テキストの描写
+            # self.screen.blit(rect_ope4.get_obj(), (150, (rect_ope4.get_pos()).center[1]))  # テキストの描写
             self.screen.blit(rect_help.get_obj(), rect_help.get_pos())  # テキストの描写
 
             # 画面の更新
             pygame.display.update()
 
-            # イベント処理
-            for event in pygame.event.get():
-                if event.type == QUIT:
-                    h.operation_finish()
-                elif event.type == KEYDOWN:
-                    if event.key == K_1:
-                        self.player = 'USER'
-                        _is_loop = False
-                        break
-                    elif event.key == K_2:
-                        self.player = 'AI_MAIN'
-                        _is_loop = False
-                        break
-                    elif event.key == K_3:
-                        self.player = 'AI_SUB'
-                        _is_loop = False
-                        break
-                    elif event.key == K_4:
-                        self.player = 'AGENT'
-                        _is_loop = False
-                        break
-                    elif event.key == K_ESCAPE:
-                        h.operation_finish()
+            _is_loop = self._catch_input()
 
     def get_mode_next(self):
-        return self.mode_next, self.player
+        return self.mode_next, self.player, self.num_stage
+
+    def _catch_input(self):
+        # イベント処理
+        is_loop = True
+        list_key = [[K_1, K_2, K_3, K_4, K_5, K_6, K_7, K_8, K_9],
+                    [K_q, K_w, K_e, K_r, K_t, K_y, K_u, K_i, K_o]]
+        for event in pygame.event.get():
+            if event.type == QUIT:
+                h.operation_finish()
+            elif event.type == KEYDOWN:
+                if event.key in list_key[0]:
+                    self.player = 'USER'
+                    self.num_stage = list_key[0].index(event.key) + 1
+                    is_loop = False
+                elif event.key in list_key[1]:
+                    self.player = 'AI'
+                    self.num_stage = list_key[1].index(event.key) + 1
+                    is_loop = False
+                elif event.key == K_ESCAPE:
+                    h.operation_finish()
+        return is_loop

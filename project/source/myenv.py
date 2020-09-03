@@ -29,8 +29,7 @@ class MyEnv(gym.Env):
     # ---------------------------------------- function required -------------------------------------------------------
     # ゲームを呼び出すことで初期化
     def reset(self):
-        self.game_stage = mode_gamestage.GameStage(_screen_class_arg=self.screen, _path_file_stage=self.path_file_stage,
-                                                   _actor='AGENT')
+        self.game_stage = mode_gamestage.GameStage(_screen_class_arg=self.screen, _num_stage=None, _actor='AGENT')
 
     # _actionは（right, left, jump）の各キーのON,OFFで獲得
     def step(self, _action):
