@@ -4,7 +4,7 @@ import math
 import sys
 import shutil
 from keras.models import Sequential, model_from_json
-from keras.layers import Dense, Conv2D, MaxPool2D
+from keras.layers import Dense, Dropout
 from keras.optimizers import Adam
 from keras.utils import plot_model
 from collections import deque
@@ -54,7 +54,9 @@ class QNetwork:
                  _hidden_size=SIZE_HIDDEN):
         self.model = Sequential()
         self.model.add(Dense(_hidden_size, activation='relu', input_dim=_state_size))
+        # self.model.add(Dropout(0.3))
         self.model.add(Dense(_hidden_size, activation='relu'))
+        # self.model.add(Dropout(0.3))
         self.model.add(Dense(_action_size, activation='linear'))
         self.optimizer = Adam(lr=_learning_rate)
         self.model.compile(loss=huberloss, optimizer=self.optimizer)
