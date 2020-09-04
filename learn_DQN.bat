@@ -1,1 +1,1 @@
-python project/source/DQN.py stage7.txt
+python project/source/DQN.py stage1.txt

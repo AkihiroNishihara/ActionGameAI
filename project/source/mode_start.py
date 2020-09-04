@@ -26,10 +26,10 @@ class Start:
         # rect_ope3.update_pos_rect(0, 50)
         # rect_ope4 = class_generate_rect.Rectangle("4: train AI", is_centering=True, _color=(0, 0, 0), _size_font=40)
         # rect_ope4.update_pos_rect(0, 100)
-        rect_ope1 = class_generate_rect.Rectangle("play by user: 1 ~ 9", is_centering=True, _color=(0, 0, 0),
+        rect_ope1 = class_generate_rect.Rectangle("play by user: 1 ~ 0", is_centering=True, _color=(0, 0, 0),
                                                   _size_font=40)
         rect_ope1.update_pos_rect(0, -50)
-        rect_ope2 = class_generate_rect.Rectangle("play by AI: Q ~ O", is_centering=True, _color=(0, 0, 0),
+        rect_ope2 = class_generate_rect.Rectangle("play by AI: Q ~ P", is_centering=True, _color=(0, 0, 0),
                                                   _size_font=40)
         rect_help = class_generate_rect.Rectangle("[Action key] Right: move forward, Space: jump", is_centering=True,
                                                   _color=(0, 0, 255), _size_font=40)
