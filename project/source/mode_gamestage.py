@@ -8,7 +8,7 @@ import header as h, class_generate_rect, DQN
 from keras.models import model_from_json
 from keras.optimizers import Adam
 
-TIME_STAGE = 99
+TIME_STAGE = 30
 PARAM_ACCEL = 1
 DIST_BASE_MOVE = 10
 SCREEN = Rect(0, 0, h.SCREEN_WIDTH, h.SCREEN_HEIGHT)
@@ -325,7 +325,7 @@ class GameStage:
         # 移動による報酬: 移動距離(右方向でプラス): ブロックのジャンプを積極的に行える
         x_cur = self.player.rect.centerx
         dif_x = x_cur - self.x_old
-        reward = 0
+        reward = -1
         if dif_x > 0:
             reward = 1
 

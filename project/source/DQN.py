@@ -1,10 +1,9 @@
 import os
 import numpy as np
-import datetime
 import math
 import sys
 import shutil
-from keras.models import Sequential
+from keras.models import Sequential, model_from_json
 from keras.layers import Dense, Conv2D, MaxPool2D
 from keras.optimizers import Adam
 from keras.utils import plot_model
@@ -16,7 +15,6 @@ import myenv, header as h
 
 FUNC_REWARD = 1  # 強化学習における報酬の設定
 LEARNING_RATE = 0.0001  # Q-networkの学習係数
-# LEARNING_RATE = 0.01  # Q-networkの学習係数
 OBS_LEFT = 1
 OBS_TOP = -1
 OBS_RIGHT = 2
@@ -25,10 +23,9 @@ SIZE_STATE = (OBS_RIGHT - OBS_LEFT) * (OBS_BOTTOM - OBS_TOP) + 2  # 観測マス
 SIZE_ACTION = 4
 SIZE_HIDDEN = 16
 SEED = 1
-NUM_EPISODES = 49  # 総試行回数
-SIZE_LOOP = 200
+NUM_EPISODES = 19  # 総試行回数
+SIZE_LOOP = 500
 GAMMA = 0.99  # 割引係数
-# memory_size = 10000  # バッファーメモリの大きさ
 MEMORY_SIZE = 10000  # バッファーメモリの大きさ
 BATCH_SIZE = 32  # Q-networkを更新するバッチの大記載
 
@@ -36,6 +33,8 @@ BATCH_SIZE = 32  # Q-networkを更新するバッチの大記載
 OBSERVE_PLAYER = 'RIGHT'
 DQN_MODE = 1  # 1がDQN、0がDDQNです
 LENDER_MODE = 0  # 0は学習後も描画なし、1は学習終了後に描画する
+
+args = sys.argv
 
 
 # 損失関数の定義(huber関数)
@@ -165,10 +164,11 @@ def main():
     pygame.init()
     pygame.display.set_caption("Action Game AI")
     screen = pygame.display.set_mode((h.SCREEN_WIDTH, h.SCREEN_HEIGHT))
+    pygame.display.iconify()
     screen_sub1 = pygame.display.set_mode((h.SCREEN_WIDTH, h.SCREEN_HEIGHT))
     screen_sub2 = pygame.display.set_mode((h.SCREEN_WIDTH, h.SCREEN_HEIGHT))
     # env = myenv.MyEnv(_path_file_stage='./stage_sample.txt', _screen=screen)
-    env = myenv.MyEnv(_path_file_stage='./stage_sample.txt', _screen=screen)
+    env = myenv.MyEnv(_path_file_stage='./project/source/{0}'.format(args[1]), _screen=screen)
     env_sub1 = myenv.MyEnv(_path_file_stage='./stage_sub1.txt', _screen=screen_sub1)
     env_sub2 = myenv.MyEnv(_path_file_stage='./stage_sub2.txt', _screen=screen_sub2)
 
@@ -182,7 +182,7 @@ def main():
     memory = Memory(_max_size=MEMORY_SIZE)
     actor = Actor()
 
-    fp = open('./log.txt', 'w')
+    fp = open('./project/source/log_{0}.txt'.format(args[1].replace('.txt', '')), 'w')
     # メインルーチン
     for episode in range(NUM_EPISODES):
         env.reset()
@@ -301,14 +301,12 @@ def main():
         print('{0}/{1}: {2}'.format(episode + 1, NUM_EPISODES, sum(list_reward) / len(list_reward)))
         # print(count_loop)
 
-    dt_now = datetime.datetime.now()
-    str_time = dt_now.strftime('%Y-%m-%d_%H-%M-%S')
-    path_dirs = './project/network/model_{0}'.format(str_time)
+    path_dirs = './project/network/model_{0}'.format(args[1].replace('.txt', ''))
     os.makedirs(path_dirs, exist_ok=True)
     mainQN.save_network(_path_dir=path_dirs, _name_network='mainQN')
     plot_model(mainQN.model, to_file=path_dirs + '/Qnetwork.png', show_shapes=True)  # Qネットワークの可視化
-    shutil.copy('./project/stage_sample.txt', path_dirs)
-    shutil.copy('./project/log.txt', path_dirs)
+    shutil.copy('./project/source/{0}'.format(args[1]), path_dirs)
+    shutil.copy('./project/source/log_{0}.txt'.format(args[1].replace('.txt', '')), path_dirs)
 
 
 if __name__ == '__main__':

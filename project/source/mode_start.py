@@ -58,19 +58,19 @@ class Start:
     def _catch_input(self):
         # イベント処理
         is_loop = True
-        list_key = [[K_1, K_2, K_3, K_4, K_5, K_6, K_7, K_8, K_9],
-                    [K_q, K_w, K_e, K_r, K_t, K_y, K_u, K_i, K_o]]
+        list_key = [[K_1, K_2, K_3, K_4, K_5, K_6, K_7, K_8, K_9, K_0],
+                    [K_q, K_w, K_e, K_r, K_t, K_y, K_u, K_i, K_o, K_p]]
         for event in pygame.event.get():
             if event.type == QUIT:
                 h.operation_finish()
             elif event.type == KEYDOWN:
                 if event.key in list_key[0]:
                     self.player = 'USER'
-                    self.num_stage = list_key[0].index(event.key) + 1
+                    self.num_stage = (list_key[0].index(event.key) + 1) % 10
                     is_loop = False
                 elif event.key in list_key[1]:
                     self.player = 'AI'
-                    self.num_stage = list_key[1].index(event.key) + 1
+                    self.num_stage = (list_key[1].index(event.key) + 1) % 10
                     is_loop = False
                 elif event.key == K_ESCAPE:
                     h.operation_finish()
