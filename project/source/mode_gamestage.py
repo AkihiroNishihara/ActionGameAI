@@ -156,10 +156,15 @@ class GameStage:
         self.all.clear(self.screen, self.bg)
         pygame.draw.rect(self.screen, (200, 200, 200), Rect(0, 0, h.SCREEN_WIDTH, h.SIZE_IMAGE_UNIT))  # 画面上部の四角形の描写
 
+        # アクターの描写
+        # self.screen.draw_text(self.actor, topright=(h.SCREEN_WIDTH, h.SCREEN_HEIGHT), fontsize=60)
+        text_actor = self.font.render(self.actor, True, (0, 0, 0))
+        self.screen.blit(text_actor, [500, 0])
+
         # 経過時間の描写
         self._update_time_remain()
         text_time_remain = self.font.render(str(max(0, self.time_remain)), True, (255, 0, 0))  # テキストの作成
-        self.screen.blit(text_time_remain, [0, 0])
+        self.screen.blit(text_time_remain, [20, 0])
 
         # 更新されたスプライトの取得
         dirty_rect = self.all.draw(self.screen)
