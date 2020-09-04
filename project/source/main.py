@@ -1,7 +1,7 @@
 # coding:utf-8
 import pygame
 import os
-from project.source import mode_gamestage, header as h, mode_start, mode_under_dev
+import mode_gamestage, header as h, mode_start, mode_game_end
 
 # START, STAGE, END
 mode_initial = "START"
@@ -31,7 +31,7 @@ class ActionGame:
                 #     mode_current = mode_gamestage.GameStage(_screen, stage3, _actor=actor)
                 self.MODE = mode_current.get_mode_next()
             elif self.MODE is "END":
-                mode_current = mode_under_dev.UnderDevelopment(_screen)
+                mode_current = mode_game_end.GameEnd(_screen)
                 self.MODE = mode_current.get_mode_next()
             else:
                 print("wrong MODE is selected\n")

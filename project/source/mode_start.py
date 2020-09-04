@@ -1,6 +1,6 @@
 import pygame
 from pygame.locals import *
-from project.source import header as h, class_generate_rect
+import header as h, class_generate_rect
 
 
 # TODO:ユーザプレイ，エージェントプレイ（未学習，学習済み），学習の分岐を作る
@@ -31,7 +31,7 @@ class Start:
         rect_ope1.update_pos_rect(0, -50)
         rect_ope2 = class_generate_rect.Rectangle("play by AI: Q ~ O", is_centering=True, _color=(0, 0, 0),
                                                   _size_font=40)
-        rect_help = class_generate_rect.Rectangle("Action = arrow key: move, space key: jump", is_centering=True,
+        rect_help = class_generate_rect.Rectangle("[Action key] Right: move forward, Space: jump", is_centering=True,
                                                   _color=(0, 0, 255), _size_font=40)
         rect_help.update_pos_rect(0, 200)
 

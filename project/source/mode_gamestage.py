@@ -4,11 +4,11 @@ import itertools
 import numpy as np
 import os
 import sys
-from project.source import header as h, class_generate_rect, DQN
+import header as h, class_generate_rect, DQN
 from keras.models import model_from_json
 from keras.optimizers import Adam
 
-TIME_STAGE = 30
+TIME_STAGE = 99
 PARAM_ACCEL = 1
 DIST_BASE_MOVE = 10
 SCREEN = Rect(0, 0, h.SCREEN_WIDTH, h.SCREEN_HEIGHT)
@@ -44,10 +44,10 @@ class GameStage:
         self.rect_ope.update_pos_rect(0, 100)
 
         # 画像のロード
-        Player.left_image = pygame.image.load("../image/player.png").convert_alpha()  # 左向き
+        Player.left_image = pygame.image.load("./project/image/player.png").convert_alpha()  # 左向き
         Player.right_image = pygame.transform.flip(Player.left_image, 1, 0)  # 右向き
-        Block.image = pygame.image.load("../image/brick.png").convert_alpha()
-        Goal.image = pygame.image.load("../image/goal.png").convert_alpha()
+        Block.image = pygame.image.load("./project/image/brick.png").convert_alpha()
+        Goal.image = pygame.image.load("./project/image/goal.png").convert_alpha()
 
         # スプライトグループの作成
         self.all = pygame.sprite.RenderUpdates()
@@ -88,9 +88,9 @@ class GameStage:
         list_pos_player_ini = []
         list_pos_goal_ini = []
         if self.is_training:
-            _path_file_stage = './stage_sample.txt'
+            _path_file_stage = './project/source/stage_sample.txt'
         else:
-            _path_file_stage = '../network/model_stage{0}/stage{0}.txt'.format(_num_stage)
+            _path_file_stage = './project/network/model_stage{0}/stage{0}.txt'.format(_num_stage)
         fp = open(_path_file_stage, 'r')
         list_lines = fp.readlines()
         for line in list_lines:
@@ -108,7 +108,7 @@ class GameStage:
         return list_info_gamestage, list_pos_player_ini, list_pos_goal_ini
 
     def _load_model(self, _num_stage):
-        path_dir = '../network/model_stage{0}'.format(_num_stage)
+        path_dir = './project/network/model_stage{0}'.format(_num_stage)
         str_model = open(path_dir + '/mainQN_model.json', 'r').read()
         self.model = model_from_json(str_model)
         self.model.compile(loss=DQN.huberloss, optimizer=Adam(lr=DQN.LEARNING_RATE))
@@ -190,7 +190,8 @@ class GameStage:
                 # 現在の周囲の状態からキー入力を受け取る
                 state_current = self.get_observation_around()
                 state_current = np.array(state_current).reshape([1, len(state_current)])
-                action_int = np.argmax(self.model.predict(np.array(state_current))[0])
+                list_reward = self.model.predict(np.array(state_current))[0]
+                action_int = np.argmax(list_reward)
                 dict_pressed_key = DQN.get_dict_action(_int_act=action_int)
             self._update_sprite(_input_action=dict_pressed_key)
 
@@ -270,11 +271,8 @@ class GameStage:
         # index_height, index_width: 現在プレイヤーの中心が所属する格子点の番号
         index_height = int(rect_player[1] / h.SIZE_IMAGE_UNIT)
         index_width = int(rect_player[0] / h.SIZE_IMAGE_UNIT)
-        for index_h, index_w in itertools.product(range(index_height-2, index_height + 3),
-                                                  range(index_width, index_width + 5)):
-            # キャラがいる場所は無視
-            if index_h == index_height and index_w == index_width:
-                continue
+        for index_h, index_w in itertools.product(range(index_height + DQN.OBS_TOP, index_height + DQN.OBS_BOTTOM),
+                                                  range(index_width + DQN.OBS_LEFT, index_width + DQN.OBS_RIGHT)):
             observation.append(self._get_observation_each((index_h, index_w)))
         # for index_h in range(index_height - 2, index_height + 3):
         #     temp_list = []
@@ -316,13 +314,15 @@ class GameStage:
         2. ジャンプにプラス評価を付与(ブロックから離れている状態)
         '''
 
-        # 周囲の状態を獲得し，報酬を初期化
+        # 周囲の状態を獲得
         observation_around = self.get_observation_around()
 
-        # 移動による報酬: 移動距離(右方向でプラス)
+        # 移動による報酬: 移動距離(右方向でプラス): ブロックのジャンプを積極的に行える
         x_cur = self.player.rect.centerx
         dif_x = x_cur - self.x_old
-        reward = dif_x
+        reward = 0
+        if dif_x > 0:
+            reward = 1
 
         # 隣のセルに移動した際の追加報酬
         # index_width_cur = int(self.player.rect.centerx / h.SIZE_IMAGE_UNIT)
@@ -372,16 +372,58 @@ class GameStage:
         # if self.is_game_over and self.time_remain != 0:
         #     # 地面に落下時： 報酬マイナス
         #     reward -= 10
+
+        if DQN.FUNC_REWARD == 1:
+            # 追加の報酬調整
+            # index_width_cur = int(self.player.rect.centerx / h.SIZE_IMAGE_UNIT)
+            # dif_index_width = index_width_cur - self.index_width_old
+            # if dif_index_width>0:
+            #     reward += index_width_cur * 100
+
+            is_jump = self.player.get_is_jump()
+            is_air = not self.player.get_is_on_block()
+            weight_jump = 1
+            if is_jump:
+                # 正面がブロックでない，または右下が空中でない: 不要なジャンプ
+                if observation_around[1] != 1 and observation_around[2] != 0:
+                    weight_jump = -1
+            # else:
+            #     # 必要なジャンプ: 踏切位置に応じて重みを算出 => ブロックの端ギリギリで飛ぶ方が高スコア
+            #     # weight_jump = (observation_around[5] / h.SIZE_IMAGE_UNIT) ** 2
+            #     weight_jump = 1 - (1 - observation_around[3] / h.SIZE_IMAGE_UNIT) ** 4
+
+            # if not is_air:
+            #     self.weight_take_off = 1
+            # reward *= self.weight_take_off
+
+            # 空中，移動に大きな重み
+            # weight_air = 1
+            # if is_air:
+            #     weight_air = 10
+
+            reward *= weight_jump
+            # 実質ゲームオーバー
+            if self.player.rect.bottom > h.SCREEN_HEIGHT - h.SIZE_IMAGE_UNIT:
+                reward = -1
+
         if self.is_game_clear:
-            reward += 10000000
-        # index_width_cur = self.player.rect.centerx / h.SIZE_IMAGE_UNIT
+            reward = 1
+        if self.is_game_over and self.time_remain != 0:
+            # 地面に落下時： 報酬マイナス
+            reward = -1
+        # if self.is_game_clear:
+        #     reward += self.time_remain * 10
+        # if self.is_game_over and self.time_remain != 0:
+        #     # 地面に落下時： 報酬マイナス
+        #     reward = -1
+        index_width_cur = self.player.rect.centerx / h.SIZE_IMAGE_UNIT
         # reward = index_width_cur - self.index_width_old
         # if self.is_game_over:
         #     reward = -1
 
         # パラメータの更新
         self.x_old = x_cur
-        # self.index_width_old = index_width_cur
+        self.index_width_old = index_width_cur
 
         return reward
 
@@ -523,14 +565,9 @@ class Player(pygame.sprite.Sprite):
 
     # _tuple_pressed_key = (right, left, space)
     def action(self, _dict_input):
-        if _dict_input['right'] and _dict_input['left']:
-            self.fpvx = 0.0
-        elif _dict_input['right']:
+        if _dict_input['right']:
             self.image = self.right_image
             self.fpvx = self.MOVE_SPEED * self.coef_speed
-        elif _dict_input['left']:
-            self.image = self.left_image
-            self.fpvx = -self.MOVE_SPEED * self.coef_speed
         else:
             self.fpvx = 0.0
 

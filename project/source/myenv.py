@@ -2,7 +2,7 @@ import gym
 import gym.spaces
 import numpy as np
 
-from project.source import mode_gamestage, DQN, header as h
+import mode_gamestage, DQN, header as h
 
 
 class MyEnv(gym.Env):
@@ -17,11 +17,10 @@ class MyEnv(gym.Env):
             状態空間：離散値（0:無し, 1：ブロック, 2：ゴール, 3:壁），上右下左の4方向を観測
             報酬の範囲：0以上
         '''
-        self.action_space = gym.spaces.MultiBinary(3)
+        self.action_space = gym.spaces.MultiBinary(2)
         # self.observation_space = gym.spaces.Discrete(DQN.SIZE_STATE)
-        self.observation_space = gym.spaces.Box(low=0.0, high=h.SIZE_IMAGE_UNIT, shape=(1, DQN.SIZE_STATE),
-                                                dtype=np.float32)
-        self.reward_range = (0.0, float('inf'))
+        self.observation_space = gym.spaces.Box(low=0.0, high=h.SIZE_IMAGE_UNIT, shape=(1, DQN.SIZE_STATE), dtype=np.int16)
+        self.reward_range = (-float('inf'), float('inf'))
 
         self.screen = _screen
         self.reset()
