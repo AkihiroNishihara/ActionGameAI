@@ -10,6 +10,7 @@ Pythonをインストールした後に，下記のパッケージをコンソ�
 * numpy
 * tensorflow
 * gym
+* h5py
 
 
 ## play方法

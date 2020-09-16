@@ -1,43 +1,41 @@
-# standard library
 import os
+import numpy as np
+import datetime
 import math
 import sys
 import shutil
-from collections import deque
-# third party library
-import numpy as np
-from keras.models import Sequential, model_from_json
-from keras.layers import Dense, Dropout
+from keras.models import Sequential
+from keras.layers import Dense, Conv2D, MaxPool2D
 from keras.optimizers import Adam
 from keras.utils import plot_model
+from collections import deque
 from keras import backend as K  # Kerasは自身で行列計算とかしない，それをするためのやーつ
 import tensorflow as tf
 import pygame
-# my developed library
-import myenv, header as h
+from project.source import myenv, header as h
 
 FUNC_REWARD = 1  # 強化学習における報酬の設定
-LEARNING_RATE = 0.0001  # Q-networkの学習係数
-OBS_LEFT = 1
+LEARNING_RATE = 0.1  # Q-networkの学習係数
+# LEARNING_RATE = 0.01  # Q-networkの学習係数
+OBS_LEFT = 0
 OBS_TOP = -1
-OBS_RIGHT = 2
+OBS_RIGHT = 3
 OBS_BOTTOM = 2
-SIZE_STATE = (OBS_RIGHT - OBS_LEFT) * (OBS_BOTTOM - OBS_TOP) + 2  # 観測マス（キャラ位置除く）+マス内の座標
-SIZE_ACTION = 4
-SIZE_HIDDEN = 16
+SIZE_STATE = (OBS_RIGHT - OBS_LEFT) * (OBS_BOTTOM - OBS_TOP) - 1 + 2  # 観測マス（キャラ位置除く）+マス内の座標
+SIZE_ACTION = 8
+SIZE_HIDDEN = 32
 SEED = 1
 NUM_EPISODES = 19  # 総試行回数
-SIZE_LOOP = 500
+SIZE_LOOP = 1000
 GAMMA = 0.99  # 割引係数
-MEMORY_SIZE = 10000  # バッファーメモリの大きさ
+# memory_size = 10000  # バッファーメモリの大きさ
+MEMORY_SIZE = 1000  # バッファーメモリの大きさ
 BATCH_SIZE = 32  # Q-networkを更新するバッチの大記載
 
 # MODE PARAMETER
 OBSERVE_PLAYER = 'RIGHT'
 DQN_MODE = 1  # 1がDQN、0がDDQNです
 LENDER_MODE = 0  # 0は学習後も描画なし、1は学習終了後に描画する
-
-args = sys.argv
 
 
 # 損失関数の定義(huber関数)
@@ -57,9 +55,8 @@ class QNetwork:
                  _hidden_size=SIZE_HIDDEN):
         self.model = Sequential()
         self.model.add(Dense(_hidden_size, activation='relu', input_dim=_state_size))
-        # self.model.add(Dropout(0.3))
         self.model.add(Dense(_hidden_size, activation='relu'))
-        # self.model.add(Dropout(0.3))
+        self.model.add(Dense(_hidden_size, activation='relu'))
         self.model.add(Dense(_action_size, activation='linear'))
         self.optimizer = Adam(lr=_learning_rate)
         self.model.compile(loss=huberloss, optimizer=self.optimizer)
@@ -91,7 +88,7 @@ class QNetwork:
                 target = reward_b + _gamma * _targetQN.model.predict(next_state_b)[0][next_action]
 
             targets[i] = self.model.predict(state_b)  # Qネットワークの出力
-            int_action_b = 1 * action_b['right'] + 2 * action_b['space']
+            int_action_b = 1 * action_b['right'] + 2 * action_b['left'] + 4 * action_b['space']
             targets[i][int_action_b] = target  # 教師信号
 
         self.model.fit(inputs, targets, epochs=1, verbose=0)
@@ -143,16 +140,15 @@ def get_dict_action(_int_act):
         print('Error: _int_act in get_list_bin_action is out of range', file=sys.stderr)
         os.system('PAUSE')
         exit(-1)
-    # actoin をバイナリの文字列で表現(ゼロで埋めて3桁)
+    # actoin をバイナリの文字列で表現
     str_bin_action = format(_int_act, 'b')
     for i in range(int(math.log2(SIZE_ACTION)) - len(str_bin_action)):
         str_bin_action = '0' + str_bin_action
     list_str_bin_action = list(str_bin_action)
-
-    # キー入力の辞書を獲得
-    key_right = int(list_str_bin_action[1])
+    key_right = int(list_str_bin_action[2])
+    key_left = int(list_str_bin_action[1])
     key_space = int(list_str_bin_action[0])
-    dict_pressed_key = {'right': key_right, 'space': key_space}
+    dict_pressed_key = {'right': key_right, 'left': key_left, 'space': key_space}
     return dict_pressed_key
 
 
@@ -169,11 +165,10 @@ def main():
     pygame.init()
     pygame.display.set_caption("Action Game AI")
     screen = pygame.display.set_mode((h.SCREEN_WIDTH, h.SCREEN_HEIGHT))
-    pygame.display.iconify()
     screen_sub1 = pygame.display.set_mode((h.SCREEN_WIDTH, h.SCREEN_HEIGHT))
     screen_sub2 = pygame.display.set_mode((h.SCREEN_WIDTH, h.SCREEN_HEIGHT))
     # env = myenv.MyEnv(_path_file_stage='./stage_sample.txt', _screen=screen)
-    env = myenv.MyEnv(_path_file_stage='./project/source/{0}'.format(args[1]), _screen=screen)
+    env = myenv.MyEnv(_path_file_stage='./stage_sample.txt', _screen=screen)
     env_sub1 = myenv.MyEnv(_path_file_stage='./stage_sub1.txt', _screen=screen_sub1)
     env_sub2 = myenv.MyEnv(_path_file_stage='./stage_sub2.txt', _screen=screen_sub2)
 
@@ -187,12 +182,11 @@ def main():
     memory = Memory(_max_size=MEMORY_SIZE)
     actor = Actor()
 
-    fp = open('./project/source/log_{0}.txt'.format(args[1].replace('.txt', '')), 'w')
     # メインルーチン
     for episode in range(NUM_EPISODES):
         env.reset()
         act_ini = env.action_space.sample()
-        action = {'right': act_ini[0], 'space': act_ini[1]}
+        action = {'right': act_ini[0], 'left': act_ini[1], 'space': act_ini[2]}
         state, reward, is_done, _ = env.step(action)  # 行動a_tの実行による行動後の観測データ・報酬・ゲーム終了フラグ・詳細情報
         state = np.reshape(state, [1, SIZE_STATE])
 
@@ -207,12 +201,13 @@ def main():
 
         # 1試行のループ
         list_reward = []
+        count_loop = 0
         is_train_sub1 = False
         is_train_sub2 = False
         # for count_loop in range(SIZE_LOOP):
         # print(str(count))
-        fp.write('\nEPISODE {0}\n'.format(episode))
-        for count_loop in range(SIZE_LOOP):
+        while not is_done:
+            count_loop += 1
             # if (islearned == 1) and LENDER_MODE:  # 学習終了時にcart-pole描画
             #     env.render()
             #     time.sleep(0.1)
@@ -300,18 +295,16 @@ def main():
             if DQN_MODE:
                 targetQN.model.set_weights(mainQN.model.get_weights())
 
-            list_return_target_Qs = mainQN.model.predict(state)[0]  # 各行動への報酬のリストを返す
-            fp.write(str(list_return_target_Qs) + '\n')
-
         print('{0}/{1}: {2}'.format(episode + 1, NUM_EPISODES, sum(list_reward) / len(list_reward)))
         # print(count_loop)
 
-    path_dirs = './project/network/model_{0}'.format(args[1].replace('.txt', ''))
+    dt_now = datetime.datetime.now()
+    str_time = dt_now.strftime('%Y-%m-%d_%H-%M-%S')
+    path_dirs = '../network/model_{0}'.format(str_time)
     os.makedirs(path_dirs, exist_ok=True)
     mainQN.save_network(_path_dir=path_dirs, _name_network='mainQN')
     plot_model(mainQN.model, to_file=path_dirs + '/Qnetwork.png', show_shapes=True)  # Qネットワークの可視化
-    shutil.copy('./project/source/{0}'.format(args[1]), path_dirs)
-    shutil.copy('./project/source/log_{0}.txt'.format(args[1].replace('.txt', '')), path_dirs)
+    shutil.copy('./stage_sample.txt', path_dirs)
 
 
 if __name__ == '__main__':
